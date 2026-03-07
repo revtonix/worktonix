@@ -42,6 +42,7 @@ interface StepData {
   title: string;
   fields: FieldInfo[];
   clickableOptions: ClickableOption[];
+  heading: string;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -162,7 +163,7 @@ async function extractFields(page: Page): Promise<FieldInfo[]> {
       fields.push(field);
     });
 
-    // Custom radio/option divs (div.radio, div.option, etc.)
+    // Custom radio/option divs (div.radio, etc.)
     document
       .querySelectorAll(
         'div.radio, div.option, div.choice, ' +
@@ -206,9 +207,8 @@ async function extractClickableOptions(
         "button, a.btn, a.btn-next, " +
         '[role="radio"], [role="option"], [role="button"], ' +
         "[data-value], " +
-        '[class*="option"], [class*="choice"], [class*="radio"], ' +
-        '[class*="answer"], [class*="select-item"], [class*="btn-option"], ' +
-        "li[class], .card"
+        '[class*="option"], [class*="choice"], ' +
+        '[class*="answer"], [class*="select-item"], [class*="btn-option"]'
     );
     candidates.forEach((el) => {
       const rect = el.getBoundingClientRect();
@@ -245,98 +245,57 @@ async function extractClickableOptions(
   });
 }
 
-/**
- * Advance the form to the next step. Strategy:
- * 1. Try clicking a.btn-next (the site's actual next button)
- * 2. Try other common next/continue button selectors
- * 3. If no next button, click the first visible div.radio option
- *    (radio-only pages auto-advance on click)
- */
-async function advanceStep(page: Page): Promise<boolean> {
-  // Priority 1: a.btn-next (the site's known next button)
-  const nextBtnSelectors = [
-    "a.btn-next",
-    'a:has-text("Next")',
-    'a:has-text("Continue")',
-    'button:has-text("Continue")',
-    'button:has-text("Next")',
-    'button:has-text("CONTINUE")',
-    'button:has-text("NEXT")',
-    'input[type="submit"]',
-    'button[type="submit"]',
-    ".continue-btn",
-    ".next-btn",
-    'button:has-text("Proceed")',
-    'button:has-text("Get Started")',
-    'button:has-text("Apply")',
-    'button:has-text("Submit")',
-  ];
-
-  for (const sel of nextBtnSelectors) {
-    try {
-      const btn = page.locator(sel).first();
-      if (await btn.isVisible({ timeout: 500 })) {
-        const text = await btn.textContent();
-        console.log(
-          '  -> Clicking next button: "' +
-            (text?.trim() || "") +
-            '" (' +
-            sel +
-            ")"
-        );
-        await btn.click();
-        return true;
-      }
-    } catch {
-      // try next selector
-    }
-  }
-
-  // Priority 2: Click the first visible div.radio option
-  // (radio-only pages like Contact Time, Credit Card Debt, etc.)
+/** Get the current step's visible heading text (h1, h2, h3, or .step-title) */
+async function getStepHeading(page: Page): Promise<string> {
   try {
-    const radioDiv = page.locator("div.radio").first();
-    if (await radioDiv.isVisible({ timeout: 500 })) {
-      const text = await radioDiv.textContent();
-      console.log(
-        '  -> Clicking first radio option: "' + (text?.trim() || "") + '"'
-      );
-      await radioDiv.click();
-      return true;
-    }
-  } catch {
-    // no radio divs
-  }
-
-  // Priority 3: Any clickable option-like element
-  const optionSelectors = [
-    'div[class*="option"]',
-    'div[class*="choice"]',
-    '[role="radio"]',
-    '[role="option"]',
-    "[data-value]",
-  ];
-  for (const sel of optionSelectors) {
-    try {
-      const opt = page.locator(sel).first();
-      if (await opt.isVisible({ timeout: 500 })) {
-        const text = await opt.textContent();
-        console.log(
-          '  -> Clicking first option: "' +
-            (text?.trim() || "") +
-            '" (' +
-            sel +
-            ")"
-        );
-        await opt.click();
-        return true;
+    return await page.evaluate(() => {
+      const selectors = [
+        "h1", "h2", "h3",
+        ".step-title", ".form-title", ".question-title",
+        '[class*="heading"]', '[class*="title"]',
+      ];
+      for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const style = window.getComputedStyle(el);
+          const rect = el.getBoundingClientRect();
+          if (
+            style.display !== "none" &&
+            style.visibility !== "hidden" &&
+            rect.width > 0 &&
+            rect.height > 0
+          ) {
+            const t = el.textContent?.trim() || "";
+            if (t.length > 0 && t.length < 200) return t;
+          }
+        }
       }
-    } catch {
-      // try next
-    }
+      return "";
+    });
+  } catch {
+    return "";
   }
+}
 
-  return false;
+/**
+ * Detect if the current step is a "radio-only" page (no text inputs/selects,
+ * just radio divs to click). These pages typically auto-advance on click.
+ */
+function isRadioOnlyStep(visibleFields: FieldInfo[]): boolean {
+  const hasTextInputs = visibleFields.some(
+    (f) =>
+      f.tag === "input" &&
+      f.type !== "hidden" &&
+      f.type !== "radio" &&
+      f.type !== "checkbox" &&
+      f.type !== "submit" &&
+      f.type !== "button"
+  );
+  const hasSelects = visibleFields.some((f) => f.tag === "select");
+  const hasRadioDivs = visibleFields.some(
+    (f) => f.type === "radio-div" || (f.tag === "div" && f.classes.includes("radio"))
+  );
+  return !hasTextInputs && !hasSelects && hasRadioDivs;
 }
 
 async function main(): Promise<void> {
@@ -363,59 +322,28 @@ async function main(): Promise<void> {
     console.log("Page loaded\n");
     await sleep(3000);
 
-    // ── Step 1: Loan Amount page ──
-    // Map the initial page first, then click "$1000 - $2500" to advance
-    console.log("\n" + "=".repeat(60));
-    console.log("STEP 1 - Loan Amount");
-    console.log("URL: " + page.url());
-    console.log("=".repeat(60));
-
-    await sleep(2000);
-    const step1Fields = await extractFields(page);
-    const step1Visible = step1Fields.filter((f: FieldInfo) => f.visible);
-    const step1Options = await extractClickableOptions(page);
-
-    allSteps.push({
-      step: 1,
-      url: page.url(),
-      title: await page.title(),
-      fields: step1Visible,
-      clickableOptions: step1Options,
-    });
-
-    logStep(step1Visible, step1Options);
-
-    const ssPath1 = path.join(screenshotsDir, "step_1.png");
-    await page.screenshot({ path: ssPath1, fullPage: true });
-    console.log("  Screenshot saved: " + ssPath1);
-
-    // Click the "$1000 - $2500" loan amount radio div to advance
-    console.log('\n  -> Clicking loan amount: "$1000 - $2500"');
-    const loanBtn = page.locator('div.radio:has-text("$1000 - $2500")').first();
-    await loanBtn.click();
-    await sleep(3000);
-
-    // ── Steps 2+: Loop through remaining form steps ──
-    let stepNum = 2;
-    const maxSteps = 25;
-    let stuckCount = 0;
+    let stepNum = 1;
+    const maxSteps = 30;
+    let previousHeading = "";
 
     while (stepNum <= maxSteps) {
-      console.log("\n" + "=".repeat(60));
-      console.log("STEP " + stepNum);
-      console.log("URL: " + page.url());
-      console.log("=".repeat(60));
-
       await sleep(2000);
 
+      const heading = await getStepHeading(page);
       const fields = await extractFields(page);
       const visibleFields = fields.filter((f: FieldInfo) => f.visible);
       const clickableOptions = await extractClickableOptions(page);
+
+      console.log("\n" + "=".repeat(60));
+      console.log("STEP " + stepNum + (heading ? " - " + heading : ""));
+      console.log("URL: " + page.url());
+      console.log("=".repeat(60));
 
       const stepData: StepData = {
         step: stepNum,
         url: page.url(),
         title: await page.title(),
+        heading,
         fields: visibleFields,
         clickableOptions,
       };
@@ -423,136 +351,168 @@ async function main(): Promise<void> {
 
       logStep(visibleFields, clickableOptions);
 
-      // Screenshot each step
+      // Screenshot
       const ssPath = path.join(screenshotsDir, "step_" + stepNum + ".png");
       await page.screenshot({ path: ssPath, fullPage: true });
       console.log("  Screenshot saved: " + ssPath);
 
-      // Capture page state before advancing
-      const htmlBefore = await page.content();
-      const urlBefore = page.url();
+      // ── Advance to next step ──
+      const radioOnly = isRadioOnlyStep(visibleFields);
 
-      // Determine how to advance:
-      // - If there are text inputs visible, we can't fill them, so try a.btn-next
-      // - If only radio divs, click the first one (auto-advances)
-      // - Otherwise try any next button
-      const hasTextInputs = visibleFields.some(
-        (f) =>
-          f.tag === "input" &&
-          (f.type === "text" ||
-            f.type === "email" ||
-            f.type === "tel" ||
-            f.type === "number" ||
-            f.type === "password" ||
-            f.type === "")
-      );
-      const hasSelectDropdowns = visibleFields.some((f) => f.tag === "select");
-      const hasRadioDivs = visibleFields.some(
-        (f) => f.type === "radio-div" || f.classes.includes("radio")
-      );
+      if (radioOnly) {
+        // Radio-only page: click the first div.radio to auto-advance
+        const firstRadio = page.locator("div.radio").first();
+        try {
+          if (await firstRadio.isVisible({ timeout: 2000 })) {
+            const text = await firstRadio.textContent();
+            console.log(
+              '  -> Clicking first div.radio: "' + (text?.trim() || "") + '"'
+            );
+            await firstRadio.click();
+          } else {
+            console.log("  No visible div.radio found. Trying text-based click...");
+            // Fallback: try clicking the first clickable option by exact text
+            if (clickableOptions.length > 0) {
+              const firstOpt = clickableOptions[0];
+              console.log(
+                '  -> Clicking option by text: "' + firstOpt.text + '"'
+              );
+              await page.click('text="' + firstOpt.text + '"');
+            } else {
+              console.log("  No options to click. End of form.");
+              break;
+            }
+          }
+        } catch (e) {
+          console.log("  Error clicking radio: " + e);
+          break;
+        }
+      } else {
+        // Page with text inputs / selects: click a.btn-next to advance
+        let clicked = false;
 
-      let advanced = false;
-
-      if (hasTextInputs || hasSelectDropdowns) {
-        // Page has input fields - try clicking a.btn-next directly
-        // (fields won't be filled, but we map what's there and move on)
+        // Try a.btn-next first (the site's primary next button)
         try {
           const nextBtn = page.locator("a.btn-next").first();
-          if (await nextBtn.isVisible({ timeout: 1000 })) {
+          if (await nextBtn.isVisible({ timeout: 2000 })) {
             const text = await nextBtn.textContent();
             console.log(
               '  -> Clicking a.btn-next: "' + (text?.trim() || "") + '"'
             );
             await nextBtn.click();
-            advanced = true;
+            clicked = true;
           }
         } catch {
-          // fall through
+          // not found
         }
 
-        if (!advanced) {
-          advanced = await advanceStep(page);
-        }
-      } else if (hasRadioDivs) {
-        // Radio-only page: click the first radio option
-        try {
-          const radioDiv = page.locator("div.radio").first();
-          if (await radioDiv.isVisible({ timeout: 1000 })) {
-            const text = await radioDiv.textContent();
-            console.log(
-              '  -> Clicking first div.radio: "' + (text?.trim() || "") + '"'
-            );
-            await radioDiv.click();
-            advanced = true;
+        // Fallback: other button selectors
+        if (!clicked) {
+          const fallbackSelectors = [
+            'button:has-text("Continue")',
+            'button:has-text("Next")',
+            'button[type="submit"]',
+            'input[type="submit"]',
+            'a:has-text("Continue")',
+            'a:has-text("Next")',
+          ];
+          for (const sel of fallbackSelectors) {
+            try {
+              const btn = page.locator(sel).first();
+              if (await btn.isVisible({ timeout: 500 })) {
+                const text = await btn.textContent();
+                console.log(
+                  '  -> Clicking fallback: "' +
+                    (text?.trim() || "") +
+                    '" (' +
+                    sel +
+                    ")"
+                );
+                await btn.click();
+                clicked = true;
+                break;
+              }
+            } catch {
+              // try next
+            }
           }
-        } catch {
-          // fall through
         }
 
-        if (!advanced) {
-          advanced = await advanceStep(page);
+        if (!clicked) {
+          // Last resort: maybe it's a radio page we didn't detect
+          try {
+            const radio = page.locator("div.radio").first();
+            if (await radio.isVisible({ timeout: 500 })) {
+              const text = await radio.textContent();
+              console.log(
+                '  -> Last resort div.radio click: "' + (text?.trim() || "") + '"'
+              );
+              await radio.click();
+              clicked = true;
+            }
+          } catch {
+            // nothing
+          }
         }
-      } else {
-        // Generic: try all advance strategies
-        advanced = await advanceStep(page);
-      }
 
-      if (!advanced) {
-        console.log("\n  No clickable element found. End of form steps.");
-        break;
+        if (!clicked) {
+          console.log("  No next button or clickable option found. End of form.");
+          break;
+        }
       }
 
       await sleep(3000);
 
-      // Check if page actually changed
-      const urlAfter = page.url();
-      const htmlAfter = await page.content();
-
-      if (urlAfter === urlBefore && htmlAfter === htmlBefore) {
-        stuckCount++;
+      // Detect if we actually moved to a new step by checking heading change
+      const newHeading = await getStepHeading(page);
+      if (newHeading === previousHeading && newHeading === heading && stepNum > 1) {
+        // Heading didn't change — might be stuck
         console.log(
-          "  Page did not change after clicking (attempt " +
-            stuckCount +
-            "/3)."
+          '  Warning: heading unchanged ("' + heading + '"). May be stuck.'
         );
-        if (stuckCount >= 3) {
-          console.log("  Stuck for 3 attempts. Stopping.");
-          break;
-        }
-        // Try a different approach: click the next radio option
+        // Try clicking next radio option
         try {
           const radios = page.locator("div.radio");
           const count = await radios.count();
-          if (count > stuckCount) {
-            const radio = radios.nth(stuckCount);
-            const text = await radio.textContent();
-            console.log(
-              '  -> Trying radio option #' +
-                (stuckCount + 1) +
-                ': "' +
-                (text?.trim() || "") +
-                '"'
-            );
-            await radio.click();
-            await sleep(3000);
+          for (let i = 1; i < count; i++) {
+            const r = radios.nth(i);
+            if (await r.isVisible({ timeout: 500 })) {
+              const text = await r.textContent();
+              console.log(
+                '  -> Retry with radio #' + (i + 1) + ': "' + (text?.trim() || "") + '"'
+              );
+              await r.click();
+              await sleep(3000);
+              const retryHeading = await getStepHeading(page);
+              if (retryHeading !== heading) break;
+            }
           }
         } catch {
           // give up
         }
-      } else {
-        stuckCount = 0;
+
+        const finalHeading = await getStepHeading(page);
+        if (finalHeading === heading) {
+          console.log("  Still stuck after retries. Stopping.");
+          break;
+        }
       }
 
+      previousHeading = heading;
       stepNum++;
     }
 
     // ── Print final summary ──
     console.log("\n\n" + "=".repeat(70));
-    console.log("COMPLETE FORM FIELD MAP");
+    console.log("COMPLETE FORM FIELD MAP (" + allSteps.length + " steps)");
     console.log("=".repeat(70) + "\n");
 
     for (const step of allSteps) {
-      console.log("\n--- Step " + step.step + " (" + step.url + ") ---");
+      console.log(
+        "\n--- Step " + step.step +
+        (step.heading ? " [" + step.heading + "]" : "") +
+        " (" + step.url + ") ---"
+      );
       console.log("Title: " + step.title);
       if (step.fields.length === 0) {
         console.log("  (no visible form fields)");
@@ -560,18 +520,9 @@ async function main(): Promise<void> {
       for (const f of step.fields) {
         const label = f.labels?.join(", ") || "no label";
         console.log(
-          "  " +
-            f.tag +
-            "[type=" +
-            f.type +
-            '] name="' +
-            f.name +
-            '" id="' +
-            f.id +
-            '" placeholder="' +
-            f.placeholder +
-            '" | label: ' +
-            label
+          "  " + f.tag + "[type=" + f.type + '] name="' + f.name +
+          '" id="' + f.id + '" placeholder="' + f.placeholder +
+          '" class="' + f.classes + '" | label: ' + label
         );
         if (f.options) {
           for (const o of f.options) {
@@ -583,17 +534,10 @@ async function main(): Promise<void> {
         console.log("  Clickable options:");
         for (const opt of step.clickableOptions) {
           console.log(
-            '    "' +
-              opt.text +
-              '" [' +
-              opt.tag +
-              '] class="' +
-              opt.classes +
-              '" data-value="' +
-              opt.dataValue +
-              '" name="' +
-              opt.name +
-              '"'
+            '    "' + opt.text + '" [' + opt.tag +
+            '] class="' + opt.classes +
+            '" data-value="' + opt.dataValue +
+            '" name="' + opt.name + '"'
           );
         }
       }
@@ -631,21 +575,10 @@ function logStep(
     console.log("  Found " + visibleFields.length + " visible fields:");
     for (const f of visibleFields) {
       console.log(
-        "    [" +
-          f.tag +
-          '] type="' +
-          f.type +
-          '" name="' +
-          f.name +
-          '" id="' +
-          f.id +
-          '" placeholder="' +
-          f.placeholder +
-          '" value="' +
-          f.value +
-          '" class="' +
-          f.classes +
-          '"'
+        "    [" + f.tag + '] type="' + f.type +
+        '" name="' + f.name + '" id="' + f.id +
+        '" placeholder="' + f.placeholder +
+        '" value="' + f.value + '" class="' + f.classes + '"'
       );
       if (f.labels && f.labels.length > 0) {
         console.log("           labels: " + f.labels.join(" | "));
@@ -663,17 +596,9 @@ function logStep(
     console.log("\n  Clickable option-like elements:");
     for (const opt of clickableOptions) {
       console.log(
-        '    [' +
-          opt.tag +
-          '] text="' +
-          opt.text +
-          '" data-value="' +
-          opt.dataValue +
-          '" name="' +
-          opt.name +
-          '" class="' +
-          opt.classes +
-          '"'
+        '    [' + opt.tag + '] text="' + opt.text +
+        '" data-value="' + opt.dataValue +
+        '" name="' + opt.name + '" class="' + opt.classes + '"'
       );
     }
   }

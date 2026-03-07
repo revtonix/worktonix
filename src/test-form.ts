@@ -56,37 +56,52 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fillInput(page: Page, selector: string, value: string, label: string): Promise<void> {
+async function fillInput(
+  page: Page,
+  selector: string,
+  value: string,
+  label: string
+): Promise<void> {
   await page.waitForSelector(selector, { timeout: 15000 });
   await page.click(selector);
   await page.fill(selector, value);
-  console.log(`✓ Filled: ${label}`);
+  console.log("✓ Filled: " + label);
 }
 
-async function clickByText(page: Page, text: string, label: string): Promise<void> {
-  const selector = `text="${text}"`;
-  await page.waitForSelector(selector, { timeout: 15000 });
-  await page.click(selector);
-  console.log(`✓ Clicked: ${label}`);
+async function clickByText(
+  page: Page,
+  text: string,
+  label: string
+): Promise<void> {
+  const sel = 'text="' + text + '"';
+  await page.waitForSelector(sel, { timeout: 15000 });
+  await page.click(sel);
+  console.log("✓ Clicked: " + label);
   await sleep(500);
 }
 
-async function selectDropdown(page: Page, selector: string, value: string, label: string): Promise<void> {
+async function selectDropdown(
+  page: Page,
+  selector: string,
+  value: string,
+  label: string
+): Promise<void> {
   await page.waitForSelector(selector, { timeout: 15000 });
   await page.selectOption(selector, { label: value });
-  console.log(`✓ Selected: ${label}`);
+  console.log("✓ Selected: " + label);
 }
 
 // ── AdsPower connection ─────────────────────────────────────────
 async function connectAdsPower(): Promise<string> {
-  console.log(`\n🔌 Starting AdsPower browser for profile: ${PROFILE_ID}`);
+  console.log("Starting AdsPower browser for profile: " + PROFILE_ID);
 
-  const { data } = await axios.get(`${ADSPOWER_API}/api/v1/browser/start`, {
+  const response = await axios.get(ADSPOWER_API + "/api/v1/browser/start", {
     params: { user_id: PROFILE_ID },
   });
 
+  const data = response.data;
   if (data.code !== 0) {
-    throw new Error(`AdsPower API error: ${data.msg}`);
+    throw new Error("AdsPower API error: " + data.msg);
   }
 
   const wsUrl: string = data.data.ws?.puppeteer || data.data.ws;
@@ -94,7 +109,7 @@ async function connectAdsPower(): Promise<string> {
     throw new Error("No websocket URL returned from AdsPower");
   }
 
-  console.log(`✓ Got WebSocket endpoint: ${wsUrl}\n`);
+  console.log("✓ Got WebSocket endpoint: " + wsUrl);
   return wsUrl;
 }
 
@@ -105,10 +120,10 @@ async function main(): Promise<void> {
     fs.mkdirSync(screenshotsDir, { recursive: true });
   }
 
-  // Step 1 — Connect to AdsPower
+  // Step 1 - Connect to AdsPower
   const wsEndpoint = await connectAdsPower();
 
-  console.log("🚀 Connecting Playwright to AdsPower browser...");
+  console.log("Connecting Playwright to AdsPower browser...");
   const browser: Browser = await chromium.connectOverCDP(wsEndpoint, {
     slowMo: 800,
   });
@@ -117,35 +132,75 @@ async function main(): Promise<void> {
   const page: Page = context?.pages()[0] || (await context.newPage());
 
   try {
-    // Step 2 — Navigate
-    console.log(`\n🌐 Navigating to ${TARGET_URL}`);
+    // Step 2 - Navigate to target URL
+    console.log("Navigating to " + TARGET_URL);
     await page.goto(TARGET_URL, { waitUntil: "networkidle", timeout: 60000 });
-    console.log("✓ Page loaded\n");
+    console.log("✓ Page loaded");
     await sleep(2000);
 
-    // Step 3 — Fill the form
-    console.log("📝 Filling form fields...\n");
+    // Step 3 - Fill the form
+    console.log("Filling form fields...");
 
     // Loan Amount (radio/button)
     await clickByText(page, lead.loanAmount, "Loan Amount");
 
     // Personal Info
-    await fillInput(page, 'input[name="first_name"], input[name="firstName"], input[placeholder*="First"]', lead.firstName, "First Name");
-    await fillInput(page, 'input[name="last_name"], input[name="lastName"], input[placeholder*="Last"]', lead.lastName, "Last Name");
-    await fillInput(page, 'input[name="email"], input[type="email"], input[placeholder*="Email"]', lead.email, "Email");
-    await fillInput(page, 'input[name="phone"], input[type="tel"], input[placeholder*="Phone"]', lead.phone, "Phone");
+    await fillInput(
+      page,
+      'input[name="first_name"], input[name="firstName"], input[placeholder*="First"]',
+      lead.firstName,
+      "First Name"
+    );
+    await fillInput(
+      page,
+      'input[name="last_name"], input[name="lastName"], input[placeholder*="Last"]',
+      lead.lastName,
+      "Last Name"
+    );
+    await fillInput(
+      page,
+      'input[name="email"], input[type="email"], input[placeholder*="Email"]',
+      lead.email,
+      "Email"
+    );
+    await fillInput(
+      page,
+      'input[name="phone"], input[type="tel"], input[placeholder*="Phone"]',
+      lead.phone,
+      "Phone"
+    );
 
     // Contact Time
     await clickByText(page, lead.contactTime, "Contact Time");
 
     // Address
-    await fillInput(page, 'input[name="zip"], input[name="zipCode"], input[placeholder*="Zip"]', lead.zip, "Zip");
-    await fillInput(page, 'input[name="address"], input[name="street"], input[placeholder*="Address"]', lead.address, "Address");
-    await fillInput(page, 'input[name="city"], input[placeholder*="City"]', lead.city, "City");
+    await fillInput(
+      page,
+      'input[name="zip"], input[name="zipCode"], input[placeholder*="Zip"]',
+      lead.zip,
+      "Zip"
+    );
+    await fillInput(
+      page,
+      'input[name="address"], input[name="street"], input[placeholder*="Address"]',
+      lead.address,
+      "Address"
+    );
+    await fillInput(
+      page,
+      'input[name="city"], input[placeholder*="City"]',
+      lead.city,
+      "City"
+    );
 
     // State (try dropdown first, fall back to text click)
     try {
-      await selectDropdown(page, 'select[name="state"]', lead.state, "State");
+      await selectDropdown(
+        page,
+        'select[name="state"]',
+        lead.state,
+        "State"
+      );
     } catch {
       await clickByText(page, lead.state, "State");
     }
@@ -156,21 +211,46 @@ async function main(): Promise<void> {
 
     // Date of Birth
     try {
-      await selectDropdown(page, 'select[name="dob_month"], select[name="dobMonth"], select[name="birth_month"]', lead.dobMonth, "DOB Month");
+      await selectDropdown(
+        page,
+        'select[name="dob_month"], select[name="dobMonth"], select[name="birth_month"]',
+        lead.dobMonth,
+        "DOB Month"
+      );
     } catch {
       await clickByText(page, lead.dobMonth, "DOB Month");
     }
 
     try {
-      await selectDropdown(page, 'select[name="dob_day"], select[name="dobDay"], select[name="birth_day"]', lead.dobDay, "DOB Day");
+      await selectDropdown(
+        page,
+        'select[name="dob_day"], select[name="dobDay"], select[name="birth_day"]',
+        lead.dobDay,
+        "DOB Day"
+      );
     } catch {
-      await fillInput(page, 'input[name="dob_day"], input[name="dobDay"], input[name="birth_day"]', lead.dobDay, "DOB Day");
+      await fillInput(
+        page,
+        'input[name="dob_day"], input[name="dobDay"], input[name="birth_day"]',
+        lead.dobDay,
+        "DOB Day"
+      );
     }
 
     try {
-      await selectDropdown(page, 'select[name="dob_year"], select[name="dobYear"], select[name="birth_year"]', lead.dobYear, "DOB Year");
+      await selectDropdown(
+        page,
+        'select[name="dob_year"], select[name="dobYear"], select[name="birth_year"]',
+        lead.dobYear,
+        "DOB Year"
+      );
     } catch {
-      await fillInput(page, 'input[name="dob_year"], input[name="dobYear"], input[name="birth_year"]', lead.dobYear, "DOB Year");
+      await fillInput(
+        page,
+        'input[name="dob_year"], input[name="dobYear"], input[name="birth_year"]',
+        lead.dobYear,
+        "DOB Year"
+      );
     }
 
     // Debt questions
@@ -186,20 +266,45 @@ async function main(): Promise<void> {
     await clickByText(page, lead.incomeSource, "Income Source");
 
     // Employment
-    await fillInput(page, 'input[name="employer"], input[name="employerName"], input[placeholder*="Employer"]', lead.employer, "Employer");
+    await fillInput(
+      page,
+      'input[name="employer"], input[name="employerName"], input[placeholder*="Employer"]',
+      lead.employer,
+      "Employer"
+    );
     await clickByText(page, lead.timeEmployed, "Time Employed");
-    await fillInput(page, 'input[name="work_phone"], input[name="workPhone"], input[placeholder*="Work"]', lead.workPhone, "Work Phone");
+    await fillInput(
+      page,
+      'input[name="work_phone"], input[name="workPhone"], input[placeholder*="Work"]',
+      lead.workPhone,
+      "Work Phone"
+    );
 
     // Identity
-    await fillInput(page, 'input[name="driver_license"], input[name="driverLicense"], input[name="dl_number"], input[placeholder*="License"]', lead.driversLicense, "Drivers License");
+    await fillInput(
+      page,
+      'input[name="driver_license"], input[name="driverLicense"], input[name="dl_number"], input[placeholder*="License"]',
+      lead.driversLicense,
+      "Drivers License"
+    );
 
     try {
-      await selectDropdown(page, 'select[name="license_state"], select[name="licenseState"], select[name="dl_state"]', lead.licenseState, "License State");
+      await selectDropdown(
+        page,
+        'select[name="license_state"], select[name="licenseState"], select[name="dl_state"]',
+        lead.licenseState,
+        "License State"
+      );
     } catch {
       await clickByText(page, lead.licenseState, "License State");
     }
 
-    await fillInput(page, 'input[name="ssn"], input[name="socialSecurity"], input[placeholder*="SSN"], input[placeholder*="Social"]', lead.ssn, "SSN");
+    await fillInput(
+      page,
+      'input[name="ssn"], input[name="socialSecurity"], input[placeholder*="SSN"], input[placeholder*="Social"]',
+      lead.ssn,
+      "SSN"
+    );
 
     // Banking
     await clickByText(page, lead.bankAccountType, "Bank Account Type");
@@ -208,32 +313,48 @@ async function main(): Promise<void> {
     await clickByText(page, lead.creditScore, "Credit Score");
     await clickByText(page, lead.loanReason, "Loan Reason");
 
-    await fillInput(page, 'input[name="bank_name"], input[name="bankName"], input[placeholder*="Bank"]', lead.bankName, "Bank Name");
-    await fillInput(page, 'input[name="routing_number"], input[name="routingNumber"], input[name="aba"], input[placeholder*="Routing"]', lead.routingNumber, "Routing Number");
-    await fillInput(page, 'input[name="account_number"], input[name="accountNumber"], input[placeholder*="Account"]', lead.accountNumber, "Account Number");
+    await fillInput(
+      page,
+      'input[name="bank_name"], input[name="bankName"], input[placeholder*="Bank"]',
+      lead.bankName,
+      "Bank Name"
+    );
+    await fillInput(
+      page,
+      'input[name="routing_number"], input[name="routingNumber"], input[name="aba"], input[placeholder*="Routing"]',
+      lead.routingNumber,
+      "Routing Number"
+    );
+    await fillInput(
+      page,
+      'input[name="account_number"], input[name="accountNumber"], input[placeholder*="Account"]',
+      lead.accountNumber,
+      "Account Number"
+    );
 
-    console.log("\n✅ All fields filled successfully!");
+    console.log("All fields filled successfully!");
 
-    // Step 4 — Screenshot (DO NOT click submit)
-    console.log("\n📸 Taking screenshot...");
+    // Step 4 - Screenshot (DO NOT click submit)
+    console.log("Taking screenshot...");
     const screenshotPath = path.join(screenshotsDir, "test_filled.png");
     await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log(`✓ Screenshot saved: ${screenshotPath}`);
+    console.log("✓ Screenshot saved: " + screenshotPath);
 
-    // Step 5 — Wait 30 seconds then close
-    console.log("\n⏳ Waiting 30 seconds for manual review...");
+    // Step 5 - Wait 30 seconds then close
+    console.log("Waiting 30 seconds for manual review...");
     await sleep(30000);
     console.log("✓ Review period complete. Closing browser.");
-
   } catch (error) {
-    console.error("\n❌ Error during form filling:", error);
+    console.error("Error during form filling:", error);
     const errorPath = path.join(screenshotsDir, "error.png");
-    await page.screenshot({ path: errorPath, fullPage: true }).catch(() => {});
-    console.error(`📸 Error screenshot saved: ${errorPath}`);
+    await page
+      .screenshot({ path: errorPath, fullPage: true })
+      .catch(() => {});
+    console.error("Error screenshot saved: " + errorPath);
     throw error;
   } finally {
     await browser.close();
-    console.log("🔒 Browser closed.");
+    console.log("Browser closed.");
   }
 }
 

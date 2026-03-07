@@ -69,9 +69,11 @@ async function fillInput(
   value: string,
   label: string
 ): Promise<void> {
-  await page.waitForSelector(selector, { timeout: 8000 });
-  await page.click(selector);
-  await page.fill(selector, value);
+  // Use :visible pseudo-class so we don't match hidden inputs from other steps
+  const el = page.locator(selector).and(page.locator(":visible")).first();
+  await el.waitFor({ state: "visible", timeout: 10000 });
+  await el.click();
+  await el.fill(value);
   console.log("  Filled: " + label + " = " + value);
 }
 
@@ -212,8 +214,9 @@ async function selectDropdown(
   value: string,
   label: string
 ): Promise<void> {
-  await page.waitForSelector(selector, { timeout: 8000 });
-  await page.selectOption(selector, { label: value });
+  const el = page.locator(selector).and(page.locator(":visible")).first();
+  await el.waitFor({ state: "visible", timeout: 10000 });
+  await el.selectOption({ label: value });
   console.log("  Selected: " + label + " = " + value);
 }
 

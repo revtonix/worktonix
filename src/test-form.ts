@@ -69,7 +69,7 @@ async function fillInput(
   value: string,
   label: string
 ): Promise<void> {
-  await page.waitForSelector(selector, { timeout: 15000 });
+  await page.waitForSelector(selector, { timeout: 8000 });
   await page.click(selector);
   await page.fill(selector, value);
   console.log("  Filled: " + label + " = " + value);
@@ -85,7 +85,7 @@ async function clickRadio(
   label: string
 ): Promise<void> {
   const sel = 'text="' + text + '"';
-  await page.waitForSelector(sel, { timeout: 15000 });
+  await page.waitForSelector(sel, { timeout: 8000 });
   await page.click(sel);
   console.log("  Clicked radio: " + label + " = " + text);
   await sleep(2000);
@@ -113,11 +113,11 @@ async function clickLabelRadio(
 ): Promise<void> {
   let clicked = false;
 
-  // Strategy 1: click the label wrapping the input
+  // Strategy 1 (fastest): click the label wrapping the input by name+value
   const labelSel = 'label:has(input[name="' + name + '"][value="' + value + '"])';
   try {
     const el = page.locator(labelSel).first();
-    if (await el.isVisible({ timeout: 3000 })) {
+    if (await el.isVisible({ timeout: 1500 })) {
       await el.click();
       console.log("  Clicked label: " + label + " [" + labelSel + "]");
       clicked = true;
@@ -131,7 +131,7 @@ async function clickLabelRadio(
     try {
       const spanSel = 'span.label-bg:has-text("' + displayText + '")';
       const el = page.locator(spanSel).first();
-      if (await el.isVisible({ timeout: 2000 })) {
+      if (await el.isVisible({ timeout: 1000 })) {
         await el.click();
         console.log("  Clicked span: " + label + " [" + spanSel + "]");
         clicked = true;
@@ -141,12 +141,23 @@ async function clickLabelRadio(
     }
   }
 
-  // Strategy 3: click the input directly
+  // Strategy 3: plain text match (works for plain-div radio pages)
+  if (!clicked) {
+    try {
+      await page.click('text="' + displayText + '"', { timeout: 1500 });
+      console.log("  Clicked text: " + label + ' [text="' + displayText + '"]');
+      clicked = true;
+    } catch {
+      // try next
+    }
+  }
+
+  // Strategy 4: force-click the input directly
   if (!clicked) {
     try {
       const inputSel = 'input[name="' + name + '"][value="' + value + '"]';
       const el = page.locator(inputSel).first();
-      await el.click({ force: true, timeout: 2000 });
+      await el.click({ force: true, timeout: 1000 });
       console.log("  Clicked input: " + label + " [" + inputSel + "]");
       clicked = true;
     } catch {
@@ -154,19 +165,22 @@ async function clickLabelRadio(
     }
   }
 
-  // Strategy 4: fallback plain text match
+  // Strategy 5: click label by text content (broadest match)
   if (!clicked) {
     try {
-      await page.click('text="' + displayText + '"', { timeout: 3000 });
-      console.log("  Clicked text: " + label + ' [text="' + displayText + '"]');
-      clicked = true;
+      const el = page.locator('label:has-text("' + displayText + '")').first();
+      if (await el.isVisible({ timeout: 1000 })) {
+        await el.click();
+        console.log("  Clicked label-text: " + label + ' [label:has-text("' + displayText + '")]');
+        clicked = true;
+      }
     } catch {
       // give up
     }
   }
 
   if (!clicked) {
-    throw new Error("Could not click " + label + " (name=" + name + " value=" + value + ")");
+    throw new Error("Could not click " + label + " (name=" + name + " value=" + value + " text=" + displayText + ")");
   }
 
   await sleep(2000);
@@ -174,10 +188,10 @@ async function clickLabelRadio(
   // Some label-radio pages don't auto-advance — try btn-next as fallback
   try {
     const nextBtn = page.locator("a.btn-next").first();
-    if (await nextBtn.isVisible({ timeout: 1500 })) {
+    if (await nextBtn.isVisible({ timeout: 1000 })) {
       await nextBtn.click();
       console.log("  Clicked a.btn-next (fallback)");
-      await sleep(2000);
+      await sleep(1500);
     }
   } catch {
     // auto-advanced, no btn-next needed
@@ -186,10 +200,10 @@ async function clickLabelRadio(
 
 async function clickNext(page: Page): Promise<void> {
   const nextBtn = page.locator("a.btn-next").first();
-  await nextBtn.waitFor({ state: "visible", timeout: 10000 });
+  await nextBtn.waitFor({ state: "visible", timeout: 5000 });
   await nextBtn.click();
   console.log("  Clicked: a.btn-next");
-  await sleep(2000);
+  await sleep(1500);
 }
 
 async function selectDropdown(
@@ -198,7 +212,7 @@ async function selectDropdown(
   value: string,
   label: string
 ): Promise<void> {
-  await page.waitForSelector(selector, { timeout: 15000 });
+  await page.waitForSelector(selector, { timeout: 8000 });
   await page.selectOption(selector, { label: value });
   console.log("  Selected: " + label + " = " + value);
 }

@@ -62,7 +62,14 @@ async function fillInput(
   value: string,
   label: string
 ): Promise<void> {
-  await page.waitForSelector(selector, { timeout: 15000 });
+  // Wait for the current visible section to be ready before interacting
+  await page
+    .waitForFunction(
+      `document.querySelector('section[aria-hidden="false"]') !== null`,
+      { timeout: 5000 }
+    )
+    .catch(() => {});
+  await page.waitForSelector(selector, { state: "visible", timeout: 15000 });
   await page.click(selector);
   await page.fill(selector, value);
   console.log("✓ Filled: " + label);
@@ -77,7 +84,7 @@ async function clickByText(
   await page.waitForSelector(sel, { timeout: 15000 });
   await page.click(sel);
   console.log("✓ Clicked: " + label);
-  await sleep(500);
+  await sleep(3000);
 }
 
 async function selectDropdown(

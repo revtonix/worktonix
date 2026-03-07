@@ -80,6 +80,20 @@ async function clickByText(
   await sleep(500);
 }
 
+async function clickLabel(
+  page: Page,
+  text: string,
+  label: string
+): Promise<void> {
+  const loc = page.locator("label").filter({
+    has: page.locator('span.label-bg', { hasText: text }),
+  }).first();
+  await loc.waitFor({ state: "visible", timeout: 15000 });
+  await loc.click();
+  console.log("✓ Clicked label: " + label);
+  await sleep(1500);
+}
+
 async function selectDropdown(
   page: Page,
   selector: string,
@@ -253,17 +267,17 @@ async function main(): Promise<void> {
       );
     }
 
-    // Debt questions
-    await clickByText(page, lead.creditCardDebt10k, "Credit Card Debt 10k+");
-    await clickByText(page, lead.unsecuredDebt10k, "Unsecured Debt 10k+");
-    await clickByText(page, lead.monthlyPayment250, "Monthly Payment $250");
-    await clickByText(page, lead.hasCar, "Has Car");
+    // Debt questions (radio buttons with span.label-bg)
+    await clickLabel(page, lead.creditCardDebt10k, "Credit Card Debt 10k+");
+    await clickLabel(page, lead.unsecuredDebt10k, "Unsecured Debt 10k+");
+    await clickLabel(page, lead.monthlyPayment250, "Monthly Payment $250");
+    await clickLabel(page, lead.hasCar, "Has Car");
 
-    // Income
-    await clickByText(page, lead.monthlyIncome, "Monthly Income");
-    await clickByText(page, lead.payFrequency, "Pay Frequency");
-    await clickByText(page, lead.military, "Military");
-    await clickByText(page, lead.incomeSource, "Income Source");
+    // Income (radio buttons with span.label-bg)
+    await clickLabel(page, lead.monthlyIncome, "Monthly Income");
+    await clickLabel(page, lead.payFrequency, "Pay Frequency");
+    await clickLabel(page, lead.military, "Military");
+    await clickLabel(page, lead.incomeSource, "Income Source");
 
     // Employment
     await fillInput(
@@ -272,7 +286,7 @@ async function main(): Promise<void> {
       lead.employer,
       "Employer"
     );
-    await clickByText(page, lead.timeEmployed, "Time Employed");
+    await clickLabel(page, lead.timeEmployed, "Time Employed");
     await fillInput(
       page,
       'input[name="work_phone"], input[name="workPhone"], input[placeholder*="Work"]',
@@ -306,12 +320,12 @@ async function main(): Promise<void> {
       "SSN"
     );
 
-    // Banking
-    await clickByText(page, lead.bankAccountType, "Bank Account Type");
-    await clickByText(page, lead.directDeposit, "Direct Deposit");
-    await clickByText(page, lead.accountLength, "Account Length");
-    await clickByText(page, lead.creditScore, "Credit Score");
-    await clickByText(page, lead.loanReason, "Loan Reason");
+    // Banking (radio buttons with span.label-bg)
+    await clickLabel(page, lead.bankAccountType, "Bank Account Type");
+    await clickLabel(page, lead.directDeposit, "Direct Deposit");
+    await clickLabel(page, lead.accountLength, "Account Length");
+    await clickLabel(page, lead.creditScore, "Credit Score");
+    await clickLabel(page, lead.loanReason, "Loan Reason");
 
     await fillInput(
       page,

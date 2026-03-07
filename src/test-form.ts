@@ -62,7 +62,7 @@ async function fillInput(
   value: string,
   label: string
 ): Promise<void> {
-  await page.waitForSelector(selector, { timeout: 15000 });
+  await page.waitForSelector(selector, { timeout: 30000 });
   await page.click(selector);
   await page.fill(selector, value);
   console.log("✓ Filled: " + label);
@@ -74,10 +74,10 @@ async function clickByText(
   label: string
 ): Promise<void> {
   const sel = 'text="' + text + '"';
-  await page.waitForSelector(sel, { timeout: 15000 });
+  await page.waitForSelector(sel, { timeout: 30000 });
   await page.click(sel);
   console.log("✓ Clicked: " + label);
-  await sleep(500);
+  await sleep(1000);
 }
 
 async function selectDropdown(
@@ -86,9 +86,32 @@ async function selectDropdown(
   value: string,
   label: string
 ): Promise<void> {
-  await page.waitForSelector(selector, { timeout: 15000 });
+  await page.waitForSelector(selector, { timeout: 30000 });
   await page.selectOption(selector, { label: value });
   console.log("✓ Selected: " + label);
+}
+
+async function clickNext(page: Page, label: string = "Next"): Promise<void> {
+  const nextSelectors = [
+    'button:has-text("Next")',
+    'button:has-text("Continue")',
+    'input[type="submit"][value*="Next"]',
+    'a:has-text("Next")',
+    'button[type="submit"]',
+  ];
+
+  for (const sel of nextSelectors) {
+    try {
+      await page.waitForSelector(sel, { timeout: 5000 });
+      await page.click(sel);
+      console.log("✓ Clicked: " + label);
+      await sleep(3000);
+      return;
+    } catch {
+      continue;
+    }
+  }
+  console.log("⚠ No Next button found, continuing...");
 }
 
 // ── AdsPower connection ─────────────────────────────────────────
@@ -136,7 +159,7 @@ async function main(): Promise<void> {
     console.log("Navigating to " + TARGET_URL);
     await page.goto(TARGET_URL, { waitUntil: "networkidle", timeout: 60000 });
     console.log("✓ Page loaded");
-    await sleep(2000);
+    await sleep(3000);
 
     // Step 3 - Fill the form
     console.log("Filling form fields...");

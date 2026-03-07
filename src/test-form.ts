@@ -10,7 +10,7 @@ const ADSPOWER_API = "http://local.adspower.net:50325";
 const PROFILE_ID = process.env.ADSPOWER_PROFILE_ID || "YOUR_PROFILE_ID";
 const TARGET_URL = "https://www.unitedemergencyrelief.com/";
 
-// Test lead data
+// ── Test lead data ──────────────────────────────────────────────
 const lead = {
   loanAmount: "$1000 - $2500",
   firstName: "James",
@@ -22,7 +22,7 @@ const lead = {
   address: "4821 Elm Street",
   city: "Dallas",
   state: "TX",
-  residence: "Rent",
+  homeOwner: "Rent",
   yearsAtAddress: "2 Years",
   dobMonth: "July",
   dobDay: "14",
@@ -31,16 +31,16 @@ const lead = {
   unsecuredDebt10k: "No",
   monthlyPayment250: "Yes",
   hasCar: "No",
-  monthlyIncome: "$3000 - $3500",
+  monthlyIncome: "$3000-$3500",
   payFrequency: "Bi-Weekly",
   military: "No",
   incomeSource: "Employment",
   employer: "TechCore Solutions",
   timeEmployed: "3 Years",
   workPhone: "2145550199",
-  driverLicense: "TX284759218",
+  driversLicense: "TX284759218",
   licenseState: "TX",
-  ssn: "123-45-4521",
+  ssn: "123454521",
   bankAccountType: "Checking",
   directDeposit: "Yes",
   accountLength: "2 Years",
@@ -51,303 +51,189 @@ const lead = {
   accountNumber: "123456787834",
 };
 
-async function sleep(ms: number): Promise<void> {
+// ── Helpers ─────────────────────────────────────────────────────
+function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Helper: select a dropdown/select option by visible text.
- * Tries <select> first, then falls back to clicking an option element.
- */
-async function selectOption(page: Page, selector: string, value: string): Promise<void> {
-  await page.waitForSelector(selector, { timeout: 15000 });
-  const el = await page.$(selector);
-  if (!el) throw new Error(`Element not found: ${selector}`);
-
-  const tagName = await el.evaluate((e) => e.tagName.toLowerCase());
-  if (tagName === "select") {
-    await page.selectOption(selector, { label: value });
-  } else {
-    await el.click();
-    await sleep(300);
-    // Try to click the matching option text
-    await page.click(`text="${value}"`);
-  }
-}
-
-/**
- * Helper: fill a text input field.
- */
-async function fillField(page: Page, selector: string, value: string): Promise<void> {
+async function fillInput(page: Page, selector: string, value: string, label: string): Promise<void> {
   await page.waitForSelector(selector, { timeout: 15000 });
   await page.click(selector);
   await page.fill(selector, value);
+  console.log(`✓ Filled: ${label}`);
 }
 
-/**
- * Helper: click a radio/button option that contains specific text.
- */
-async function clickOption(page: Page, text: string): Promise<void> {
+async function clickByText(page: Page, text: string, label: string): Promise<void> {
   const selector = `text="${text}"`;
   await page.waitForSelector(selector, { timeout: 15000 });
   await page.click(selector);
+  console.log(`✓ Clicked: ${label}`);
+  await sleep(500);
 }
 
-/**
- * Helper: click a button/element matching a selector.
- */
-async function clickElement(page: Page, selector: string): Promise<void> {
+async function selectDropdown(page: Page, selector: string, value: string, label: string): Promise<void> {
   await page.waitForSelector(selector, { timeout: 15000 });
-  await page.click(selector);
+  await page.selectOption(selector, { label: value });
+  console.log(`✓ Selected: ${label}`);
 }
 
-async function startAdsPowerBrowser(): Promise<string> {
-  console.log(`[1/5] Starting AdsPower browser for profile: ${PROFILE_ID}`);
-  const response = await axios.get(`${ADSPOWER_API}/api/v1/browser/start`, {
+// ── AdsPower connection ─────────────────────────────────────────
+async function connectAdsPower(): Promise<string> {
+  console.log(`\n🔌 Starting AdsPower browser for profile: ${PROFILE_ID}`);
+
+  const { data } = await axios.get(`${ADSPOWER_API}/api/v1/browser/start`, {
     params: { user_id: PROFILE_ID },
   });
 
-  const data = response.data;
   if (data.code !== 0) {
     throw new Error(`AdsPower API error: ${data.msg}`);
   }
 
-  const wsUrl = data.data.ws?.puppeteer || data.data.ws;
+  const wsUrl: string = data.data.ws?.puppeteer || data.data.ws;
   if (!wsUrl) {
     throw new Error("No websocket URL returned from AdsPower");
   }
 
-  console.log(`   WebSocket URL: ${wsUrl}`);
+  console.log(`✓ Got WebSocket endpoint: ${wsUrl}\n`);
   return wsUrl;
 }
 
+// ── Main ────────────────────────────────────────────────────────
 async function main(): Promise<void> {
-  // Ensure screenshots directory exists
   const screenshotsDir = path.join(__dirname, "..", "screenshots");
   if (!fs.existsSync(screenshotsDir)) {
     fs.mkdirSync(screenshotsDir, { recursive: true });
   }
 
-  // Step 1: Connect to AdsPower browser
-  const wsUrl = await startAdsPowerBrowser();
+  // Step 1 — Connect to AdsPower
+  const wsEndpoint = await connectAdsPower();
 
-  console.log("[2/5] Connecting Playwright to AdsPower browser...");
-  const browser: Browser = await chromium.connectOverCDP(wsUrl, {
+  console.log("🚀 Connecting Playwright to AdsPower browser...");
+  const browser: Browser = await chromium.connectOverCDP(wsEndpoint, {
     slowMo: 800,
   });
 
-  const defaultContext = browser.contexts()[0];
-  const page: Page = defaultContext?.pages()[0] || (await defaultContext.newPage());
+  const context = browser.contexts()[0];
+  const page: Page = context?.pages()[0] || (await context.newPage());
 
   try {
-    // Step 2: Navigate to target URL
-    console.log(`[3/5] Navigating to ${TARGET_URL}`);
+    // Step 2 — Navigate
+    console.log(`\n🌐 Navigating to ${TARGET_URL}`);
     await page.goto(TARGET_URL, { waitUntil: "networkidle", timeout: 60000 });
-    console.log("   Page loaded successfully.");
+    console.log("✓ Page loaded\n");
     await sleep(2000);
 
-    // Step 3: Fill the form
-    console.log("[4/5] Filling form with test lead data...");
+    // Step 3 — Fill the form
+    console.log("📝 Filling form fields...\n");
 
-    // --- Loan Amount ---
-    console.log("   Selecting loan amount...");
-    await clickOption(page, lead.loanAmount);
-    await sleep(500);
+    // Loan Amount (radio/button)
+    await clickByText(page, lead.loanAmount, "Loan Amount");
 
-    // --- Personal Information ---
-    console.log("   Filling first name...");
-    await fillField(page, 'input[name="first_name"], input[name="firstName"], input[placeholder*="First"]', lead.firstName);
+    // Personal Info
+    await fillInput(page, 'input[name="first_name"], input[name="firstName"], input[placeholder*="First"]', lead.firstName, "First Name");
+    await fillInput(page, 'input[name="last_name"], input[name="lastName"], input[placeholder*="Last"]', lead.lastName, "Last Name");
+    await fillInput(page, 'input[name="email"], input[type="email"], input[placeholder*="Email"]', lead.email, "Email");
+    await fillInput(page, 'input[name="phone"], input[type="tel"], input[placeholder*="Phone"]', lead.phone, "Phone");
 
-    console.log("   Filling last name...");
-    await fillField(page, 'input[name="last_name"], input[name="lastName"], input[placeholder*="Last"]', lead.lastName);
+    // Contact Time
+    await clickByText(page, lead.contactTime, "Contact Time");
 
-    console.log("   Filling email...");
-    await fillField(page, 'input[name="email"], input[type="email"], input[placeholder*="Email"]', lead.email);
+    // Address
+    await fillInput(page, 'input[name="zip"], input[name="zipCode"], input[placeholder*="Zip"]', lead.zip, "Zip");
+    await fillInput(page, 'input[name="address"], input[name="street"], input[placeholder*="Address"]', lead.address, "Address");
+    await fillInput(page, 'input[name="city"], input[placeholder*="City"]', lead.city, "City");
 
-    console.log("   Filling phone...");
-    await fillField(page, 'input[name="phone"], input[type="tel"], input[placeholder*="Phone"]', lead.phone);
-
-    // --- Contact Time ---
-    console.log("   Selecting contact time...");
-    await clickOption(page, lead.contactTime);
-    await sleep(500);
-
-    // --- Address ---
-    console.log("   Filling zip code...");
-    await fillField(page, 'input[name="zip"], input[name="zipCode"], input[placeholder*="Zip"]', lead.zip);
-
-    console.log("   Filling address...");
-    await fillField(page, 'input[name="address"], input[name="street"], input[placeholder*="Address"]', lead.address);
-
-    console.log("   Filling city...");
-    await fillField(page, 'input[name="city"], input[placeholder*="City"]', lead.city);
-
-    // --- State ---
-    console.log("   Selecting state...");
+    // State (try dropdown first, fall back to text click)
     try {
-      await selectOption(page, 'select[name="state"]', lead.state);
+      await selectDropdown(page, 'select[name="state"]', lead.state, "State");
     } catch {
-      await clickOption(page, lead.state);
+      await clickByText(page, lead.state, "State");
     }
 
-    // --- Residence ---
-    console.log("   Selecting residence type...");
-    await clickOption(page, lead.residence);
-    await sleep(500);
+    // Home ownership
+    await clickByText(page, lead.homeOwner, "Home Owner");
+    await clickByText(page, lead.yearsAtAddress, "Years at Address");
 
-    // --- Years at Address ---
-    console.log("   Selecting years at address...");
-    await clickOption(page, lead.yearsAtAddress);
-    await sleep(500);
-
-    // --- Date of Birth ---
-    console.log("   Selecting DOB month...");
+    // Date of Birth
     try {
-      await selectOption(page, 'select[name="dob_month"], select[name="dobMonth"], select[name="birth_month"]', lead.dobMonth);
+      await selectDropdown(page, 'select[name="dob_month"], select[name="dobMonth"], select[name="birth_month"]', lead.dobMonth, "DOB Month");
     } catch {
-      await clickOption(page, lead.dobMonth);
+      await clickByText(page, lead.dobMonth, "DOB Month");
     }
 
-    console.log("   Selecting DOB day...");
     try {
-      await selectOption(page, 'select[name="dob_day"], select[name="dobDay"], select[name="birth_day"]', lead.dobDay);
+      await selectDropdown(page, 'select[name="dob_day"], select[name="dobDay"], select[name="birth_day"]', lead.dobDay, "DOB Day");
     } catch {
-      await fillField(page, 'input[name="dob_day"], input[name="dobDay"], input[name="birth_day"]', lead.dobDay);
+      await fillInput(page, 'input[name="dob_day"], input[name="dobDay"], input[name="birth_day"]', lead.dobDay, "DOB Day");
     }
 
-    console.log("   Selecting DOB year...");
     try {
-      await selectOption(page, 'select[name="dob_year"], select[name="dobYear"], select[name="birth_year"]', lead.dobYear);
+      await selectDropdown(page, 'select[name="dob_year"], select[name="dobYear"], select[name="birth_year"]', lead.dobYear, "DOB Year");
     } catch {
-      await fillField(page, 'input[name="dob_year"], input[name="dobYear"], input[name="birth_year"]', lead.dobYear);
+      await fillInput(page, 'input[name="dob_year"], input[name="dobYear"], input[name="birth_year"]', lead.dobYear, "DOB Year");
     }
 
-    // --- Debt Questions ---
-    console.log("   Answering credit card debt $10k+ question...");
-    await clickOption(page, lead.creditCardDebt10k);
-    await sleep(500);
+    // Debt questions
+    await clickByText(page, lead.creditCardDebt10k, "Credit Card Debt 10k+");
+    await clickByText(page, lead.unsecuredDebt10k, "Unsecured Debt 10k+");
+    await clickByText(page, lead.monthlyPayment250, "Monthly Payment $250");
+    await clickByText(page, lead.hasCar, "Has Car");
 
-    console.log("   Answering unsecured debt $10k+ question...");
-    await clickOption(page, lead.unsecuredDebt10k);
-    await sleep(500);
+    // Income
+    await clickByText(page, lead.monthlyIncome, "Monthly Income");
+    await clickByText(page, lead.payFrequency, "Pay Frequency");
+    await clickByText(page, lead.military, "Military");
+    await clickByText(page, lead.incomeSource, "Income Source");
 
-    console.log("   Answering monthly payment $250 question...");
-    await clickOption(page, lead.monthlyPayment250);
-    await sleep(500);
+    // Employment
+    await fillInput(page, 'input[name="employer"], input[name="employerName"], input[placeholder*="Employer"]', lead.employer, "Employer");
+    await clickByText(page, lead.timeEmployed, "Time Employed");
+    await fillInput(page, 'input[name="work_phone"], input[name="workPhone"], input[placeholder*="Work"]', lead.workPhone, "Work Phone");
 
-    // --- Has Car ---
-    console.log("   Answering has car question...");
-    await clickOption(page, lead.hasCar);
-    await sleep(500);
+    // Identity
+    await fillInput(page, 'input[name="driver_license"], input[name="driverLicense"], input[name="dl_number"], input[placeholder*="License"]', lead.driversLicense, "Drivers License");
 
-    // --- Monthly Income ---
-    console.log("   Selecting monthly income...");
-    await clickOption(page, lead.monthlyIncome);
-    await sleep(500);
-
-    // --- Pay Frequency ---
-    console.log("   Selecting pay frequency...");
-    await clickOption(page, lead.payFrequency);
-    await sleep(500);
-
-    // --- Military ---
-    console.log("   Answering military question...");
-    await clickOption(page, lead.military);
-    await sleep(500);
-
-    // --- Income Source ---
-    console.log("   Selecting income source...");
-    await clickOption(page, lead.incomeSource);
-    await sleep(500);
-
-    // --- Employer ---
-    console.log("   Filling employer...");
-    await fillField(page, 'input[name="employer"], input[name="employerName"], input[placeholder*="Employer"]', lead.employer);
-
-    // --- Time Employed ---
-    console.log("   Selecting time employed...");
-    await clickOption(page, lead.timeEmployed);
-    await sleep(500);
-
-    // --- Work Phone ---
-    console.log("   Filling work phone...");
-    await fillField(page, 'input[name="work_phone"], input[name="workPhone"], input[placeholder*="Work"]', lead.workPhone);
-
-    // --- Driver License ---
-    console.log("   Filling driver license...");
-    await fillField(page, 'input[name="driver_license"], input[name="driverLicense"], input[name="dl_number"], input[placeholder*="License"]', lead.driverLicense);
-
-    // --- License State ---
-    console.log("   Selecting license state...");
     try {
-      await selectOption(page, 'select[name="license_state"], select[name="licenseState"], select[name="dl_state"]', lead.licenseState);
+      await selectDropdown(page, 'select[name="license_state"], select[name="licenseState"], select[name="dl_state"]', lead.licenseState, "License State");
     } catch {
-      await clickOption(page, lead.licenseState);
+      await clickByText(page, lead.licenseState, "License State");
     }
 
-    // --- SSN ---
-    console.log("   Filling SSN...");
-    await fillField(page, 'input[name="ssn"], input[name="socialSecurity"], input[placeholder*="SSN"], input[placeholder*="Social"]', lead.ssn);
+    await fillInput(page, 'input[name="ssn"], input[name="socialSecurity"], input[placeholder*="SSN"], input[placeholder*="Social"]', lead.ssn, "SSN");
 
-    // --- Bank Account Type ---
-    console.log("   Selecting bank account type...");
-    await clickOption(page, lead.bankAccountType);
-    await sleep(500);
+    // Banking
+    await clickByText(page, lead.bankAccountType, "Bank Account Type");
+    await clickByText(page, lead.directDeposit, "Direct Deposit");
+    await clickByText(page, lead.accountLength, "Account Length");
+    await clickByText(page, lead.creditScore, "Credit Score");
+    await clickByText(page, lead.loanReason, "Loan Reason");
 
-    // --- Direct Deposit ---
-    console.log("   Answering direct deposit question...");
-    await clickOption(page, lead.directDeposit);
-    await sleep(500);
+    await fillInput(page, 'input[name="bank_name"], input[name="bankName"], input[placeholder*="Bank"]', lead.bankName, "Bank Name");
+    await fillInput(page, 'input[name="routing_number"], input[name="routingNumber"], input[name="aba"], input[placeholder*="Routing"]', lead.routingNumber, "Routing Number");
+    await fillInput(page, 'input[name="account_number"], input[name="accountNumber"], input[placeholder*="Account"]', lead.accountNumber, "Account Number");
 
-    // --- Account Length ---
-    console.log("   Selecting account length...");
-    await clickOption(page, lead.accountLength);
-    await sleep(500);
+    console.log("\n✅ All fields filled successfully!");
 
-    // --- Credit Score ---
-    console.log("   Selecting credit score...");
-    await clickOption(page, lead.creditScore);
-    await sleep(500);
-
-    // --- Loan Reason ---
-    console.log("   Selecting loan reason...");
-    await clickOption(page, lead.loanReason);
-    await sleep(500);
-
-    // --- Bank Name ---
-    console.log("   Filling bank name...");
-    await fillField(page, 'input[name="bank_name"], input[name="bankName"], input[placeholder*="Bank"]', lead.bankName);
-
-    // --- Routing Number ---
-    console.log("   Filling routing number...");
-    await fillField(page, 'input[name="routing_number"], input[name="routingNumber"], input[name="aba"], input[placeholder*="Routing"]', lead.routingNumber);
-
-    // --- Account Number ---
-    console.log("   Filling account number...");
-    await fillField(page, 'input[name="account_number"], input[name="accountNumber"], input[placeholder*="Account"]', lead.accountNumber);
-
-    console.log("   Form filling complete!");
-
-    // Step 4: Take screenshot (DO NOT click submit)
-    console.log("[5/5] Taking screenshot of filled form...");
+    // Step 4 — Screenshot (DO NOT click submit)
+    console.log("\n📸 Taking screenshot...");
     const screenshotPath = path.join(screenshotsDir, "test_filled.png");
     await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log(`   Screenshot saved to: ${screenshotPath}`);
+    console.log(`✓ Screenshot saved: ${screenshotPath}`);
 
-    // Step 5: Wait 30 seconds so we can review the form
-    console.log("   Waiting 30 seconds for manual review...");
+    // Step 5 — Wait 30 seconds then close
+    console.log("\n⏳ Waiting 30 seconds for manual review...");
     await sleep(30000);
-    console.log("   Done! Closing browser.");
+    console.log("✓ Review period complete. Closing browser.");
+
   } catch (error) {
-    console.error("Error during form filling:", error);
-    // Take error screenshot
-    const errorScreenshotPath = path.join(screenshotsDir, "error.png");
-    await page.screenshot({ path: errorScreenshotPath, fullPage: true }).catch(() => {});
-    console.error(`   Error screenshot saved to: ${errorScreenshotPath}`);
+    console.error("\n❌ Error during form filling:", error);
+    const errorPath = path.join(screenshotsDir, "error.png");
+    await page.screenshot({ path: errorPath, fullPage: true }).catch(() => {});
+    console.error(`📸 Error screenshot saved: ${errorPath}`);
     throw error;
   } finally {
     await browser.close();
-    console.log("Browser closed.");
+    console.log("🔒 Browser closed.");
   }
 }
 

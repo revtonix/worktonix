@@ -154,6 +154,30 @@ async function main(): Promise<void> {
   const context = browser.contexts()[0];
   const page: Page = context?.pages()[0] || (await context.newPage());
 
+  const clickLabel = async (text: string, lbl: string) => {
+    try {
+      await page.locator('span.label-bg').filter({ hasText: text }).first().click();
+      console.log('Label clicked:', lbl);
+      await sleep(2000);
+    } catch(e) {
+      try {
+        await page.locator('label').filter({ has: page.locator('span.label-bg', { hasText: text }) }).first().click();
+        console.log('Label clicked fallback:', lbl);
+        await sleep(2000);
+      } catch(e2) {
+        console.log('Skip label:', lbl);
+      }
+    }
+  };
+
+  const fill = async (selector: string, value: string, label: string) => {
+    await fillInput(page, selector, value, label);
+  };
+
+  const next = async () => {
+    await clickNext(page);
+  };
+
   try {
     // Step 2 - Navigate to target URL
     console.log("Navigating to " + TARGET_URL);
@@ -276,11 +300,15 @@ async function main(): Promise<void> {
       );
     }
 
-    // Debt questions
-    await clickByText(page, lead.creditCardDebt10k, "Credit Card Debt 10k+");
-    await clickByText(page, lead.unsecuredDebt10k, "Unsecured Debt 10k+");
-    await clickByText(page, lead.monthlyPayment250, "Monthly Payment $250");
-    await clickByText(page, lead.hasCar, "Has Car");
+    // Debt questions (using clickLabel for span.label-bg radio buttons)
+    await clickLabel(lead.creditCardDebt10k, "Credit Card Debt 10k+");
+    await clickLabel(lead.unsecuredDebt10k, "Unsecured Debt 10k+");
+    await clickLabel(lead.monthlyPayment250, "Monthly Payment $250");
+    await clickLabel(lead.hasCar, "Has Car");
+
+    // Income field + advance
+    await fill('input[name="income"]', '3500', 'Income');
+    await next();
 
     // Income
     await clickByText(page, lead.monthlyIncome, "Monthly Income");

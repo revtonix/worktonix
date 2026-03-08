@@ -1,8 +1,8 @@
 {
   "name": "worktonix",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "WorkTonix Desktop Application",
+  "main": "dist/electron/main.js",
   "scripts": {
     "build": "prisma generate && tsc --noEmit",
     "start": "node src/index.js",
@@ -10,17 +10,21 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "node prisma/seed.js",
-    "db:reset": "prisma migrate reset --force"
+    "db:reset": "prisma migrate reset --force",
+    "electron:build": "tsc -p tsconfig.electron.json",
+    "electron:start": "npm run electron:build && electron .",
+    "electron:dist": "npm run electron:build && electron-builder",
+    "electron:dist:win": "npm run electron:build && electron-builder --win"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
   },
   "repository": {
     "type": "git",
-    "url": "http://local_proxy@127.0.0.1:51200/git/revtonix/worktonix"
+    "url": "https://github.com/revtonix/worktonix.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Revtonix",
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^6.6.0",
@@ -37,5 +41,35 @@
     "prisma": "^6.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.revtonix.worktonix",
+    "productName": "WorkTonix",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

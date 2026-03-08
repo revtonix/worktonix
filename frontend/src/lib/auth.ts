@@ -62,21 +62,21 @@ export function getUser(): JwtPayload | null {
 export interface NavItem {
   label: string;
   href: string;
-  /** Minimum role required to see this item. */
-  minRole: Role;
+  /** Roles that can see this item. */
+  roles: Role[];
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Overview',   href: '/dashboard',            minRole: 'MANAGER' },
-  { label: 'Workspaces', href: '/dashboard/workspaces',  minRole: 'MANAGER' },
-  { label: 'Staff Management', href: '/dashboard/staff',  minRole: 'MANAGER' },
-  { label: 'Billing',    href: '/dashboard/billing',     minRole: 'ADMIN' },
-  { label: 'Settings',   href: '/dashboard/settings',    minRole: 'ADMIN' },
+  { label: 'Dashboard',        href: '/dashboard',             roles: ['ADMIN', 'TECH', 'MANAGER', 'OPERATOR'] },
+  { label: 'Workspaces',       href: '/dashboard/workspaces',  roles: ['ADMIN', 'TECH', 'MANAGER'] },
+  { label: 'Secrets',          href: '/dashboard/secrets',     roles: ['ADMIN'] },
+  { label: 'Audit Logs',       href: '/dashboard/audit-logs',  roles: ['ADMIN'] },
+  { label: 'Staff Management', href: '/dashboard/staff',       roles: ['ADMIN', 'TECH'] },
 ];
 
 /** Return only the nav items visible to the given role. */
 export function getNavItemsForRole(role: Role): NavItem[] {
-  return NAV_ITEMS.filter((item) => hasMinimumRole(role, item.minRole));
+  return NAV_ITEMS.filter((item) => item.roles.includes(role));
 }
 
 /** Roles that should use the Electron desktop app instead of the web dashboard. */

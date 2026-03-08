@@ -55,7 +55,7 @@ router.get('/api/workspaces', requirePermission('workspaces:read'), async (req, 
 
 router.post('/api/workspaces', requirePermission('workspaces:create'), async (req, res) => {
   try {
-    const { name, ownerId, config } = req.body;
+    const { name, ownerId, config, taskCount } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length < 3) {
       return res.status(400).json({ message: 'Name is required (min 3 characters)' });
@@ -74,6 +74,7 @@ router.post('/api/workspaces', requirePermission('workspaces:create'), async (re
         name: name.trim(),
         userId: ownerId || null,
         config: config || null,
+        taskCount: typeof taskCount === 'number' ? taskCount : 0,
       },
       include: { user: { select: { id: true, displayName: true, email: true } } },
     });
@@ -87,19 +88,42 @@ router.post('/api/workspaces', requirePermission('workspaces:create'), async (re
 
 router.put('/api/workspaces/:id', requirePermission('workspaces:update'), async (req, res) => {
   try {
-    const { name, ownerId, config } = req.body;
+    const { name, ownerId, config, taskCount, staffTaskAssignments, profileId, status } = req.body;
     const workspace = await prisma.workspace.update({
       where: { id: req.params.id },
       data: {
         ...(name !== undefined && { name }),
         ...(ownerId !== undefined && { userId: ownerId }),
         ...(config !== undefined && { config }),
+        ...(typeof taskCount === 'number' && { taskCount }),
+        ...(staffTaskAssignments !== undefined && { assignments: staffTaskAssignments }),
+        ...(profileId !== undefined && { profileId }),
+        ...(status !== undefined && { status }),
       },
       include: { user: { select: { id: true, displayName: true, email: true } } },
     });
     return res.json(workspace);
   } catch (err) {
     console.error('Update workspace error:', err);
+    return res.status(500).json({ message: 'Failed to update workspace' });
+  }
+});
+
+// PATCH for Electron/external profile updates
+router.patch('/api/workspaces/:id', requirePermission('workspaces:update'), async (req, res) => {
+  try {
+    const { profileId, status, error: errorMsg } = req.body;
+    const workspace = await prisma.workspace.update({
+      where: { id: req.params.id },
+      data: {
+        ...(profileId !== undefined && { profileId }),
+        ...(status !== undefined && { status }),
+        ...(errorMsg !== undefined && { config: { error: errorMsg } }),
+      },
+    });
+    return res.json(workspace);
+  } catch (err) {
+    console.error('Patch workspace error:', err);
     return res.status(500).json({ message: 'Failed to update workspace' });
   }
 });

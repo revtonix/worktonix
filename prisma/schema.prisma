@@ -37,15 +37,17 @@ model User {
 }
 
 model Workspace {
-  id        String          @id @default(cuid())
-  name      String
-  profileId String?
-  status    WorkspaceStatus @default(idle)
-  config    Json?
-  userId    String?
-  user      User?           @relation(fields: [userId], references: [id])
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id          String          @id @default(cuid())
+  name        String
+  profileId   String?
+  status      WorkspaceStatus @default(idle)
+  config      Json?
+  taskCount   Int             @default(0)
+  assignments Json?
+  userId      String?
+  user        User?           @relation(fields: [userId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@map("workspaces")
 }

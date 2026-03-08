@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { hasMinimumRole } from '@/lib/auth';
@@ -18,6 +18,8 @@ const US_STATES = [
   'Virginia','Washington','West Virginia','Wisconsin','Wyoming',
 ] as const;
 
+const TASK_COUNT_OPTIONS = [100, 200, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000];
+
 /* ── Types ────────────────────────────────────────────────────────── */
 interface StaffUser {
   id: string;
@@ -29,8 +31,10 @@ interface StaffUser {
 interface FormErrors {
   name?: string;
   ownerId?: string;
+  taskCount?: string;
   proxyHost?: string;
   proxyPort?: string;
+  userAgents?: string;
 }
 
 /* ── Shared input class ───────────────────────────────────────────── */
@@ -67,29 +71,53 @@ export default function NewWorkspacePage() {
   /* ── Form state ───────────────────────────────────────────────── */
   const [name, setName] = useState('');
   const [ownerId, setOwnerId] = useState('');
+  const [taskCount, setTaskCount] = useState<number | null>(null);
   const [proxyType, setProxyType] = useState<'HTTP' | 'HTTPS' | 'SOCKS5'>('HTTP');
   const [proxyHost, setProxyHost] = useState('');
   const [proxyPort, setProxyPort] = useState('');
   const [proxyUsername, setProxyUsername] = useState('');
   const [proxyPassword, setProxyPassword] = useState('');
   const [location, setLocation] = useState('');
-  const [uaMode, setUaMode] = useState<'random' | 'manual'>('random');
-  const [userAgent, setUserAgent] = useState('');
+  const [userAgents, setUserAgents] = useState<string[]>([]);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /* ── User Agent file upload handler ──────────────────────────── */
+  function handleUaFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result;
+      if (typeof text !== 'string') return;
+      const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+      if (lines.length === 0) {
+        setErrors((prev) => ({ ...prev, userAgents: 'File contains no valid user agent lines' }));
+        setUserAgents([]);
+      } else {
+        setErrors((prev) => { const { userAgents: _, ...rest } = prev; return rest; });
+        setUserAgents(lines);
+      }
+    };
+    reader.readAsText(file);
+  }
 
   /* ── Validation ───────────────────────────────────────────────── */
   function validate(): FormErrors {
     const e: FormErrors = {};
     if (!name.trim() || name.trim().length < 3) e.name = 'Name is required (min 3 characters)';
     if (!ownerId) e.ownerId = 'Please select a staff member';
+    if (taskCount === null) e.taskCount = 'Please select a task count';
     if (!proxyHost.trim()) e.proxyHost = 'Proxy host is required';
     const port = Number(proxyPort);
     if (!proxyPort || !Number.isInteger(port) || port < 1 || port > 65535) {
       e.proxyPort = 'Port must be an integer between 1 and 65535';
     }
+    if (userAgents.length === 0) e.userAgents = 'Please upload a user agent list (.txt file)';
     return e;
   }
 
@@ -109,6 +137,7 @@ export default function NewWorkspacePage() {
         body: {
           name: name.trim(),
           ownerId,
+          taskCount,
           config: {
             proxy: {
               type: proxyType,
@@ -118,7 +147,7 @@ export default function NewWorkspacePage() {
               password: proxyPassword || undefined,
             },
             location: location || undefined,
-            userAgent: uaMode === 'manual' ? userAgent.trim() : 'random',
+            userAgents,
           },
         },
       });
@@ -189,6 +218,24 @@ export default function NewWorkspacePage() {
             ))}
           </select>
           {errors.ownerId && <p className="mt-1 text-xs text-red-400">{errors.ownerId}</p>}
+        </div>
+
+        {/* ── Total Tasks ──────────────────────────────────────── */}
+        <div>
+          <label htmlFor="ws-tasks" className={labelCls}>Total Tasks</label>
+          <select
+            id="ws-tasks"
+            value={taskCount ?? ''}
+            onChange={(e) => setTaskCount(e.target.value ? Number(e.target.value) : null)}
+            disabled={submitting}
+            className={inputCls}
+          >
+            <option value="">— Select task count —</option>
+            {TASK_COUNT_OPTIONS.map((n) => (
+              <option key={n} value={n}>{n.toLocaleString()}</option>
+            ))}
+          </select>
+          {errors.taskCount && <p className="mt-1 text-xs text-red-400">{errors.taskCount}</p>}
         </div>
 
         {/* ── Proxy Settings ──────────────────────────────────── */}
@@ -294,42 +341,32 @@ export default function NewWorkspacePage() {
             </select>
           </div>
 
+          {/* ── User Agent List Upload ──────────────────────────── */}
           <div className="mt-4">
-            <span className={labelCls}>User Agent</span>
-            <div className="mt-2 flex items-center gap-6">
-              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                <input
-                  type="radio"
-                  name="ua-mode"
-                  checked={uaMode === 'random'}
-                  onChange={() => setUaMode('random')}
-                  disabled={submitting}
-                  className="accent-brand"
-                />
-                Random
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                <input
-                  type="radio"
-                  name="ua-mode"
-                  checked={uaMode === 'manual'}
-                  onChange={() => setUaMode('manual')}
-                  disabled={submitting}
-                  className="accent-brand"
-                />
-                Manual
-              </label>
-            </div>
-            {uaMode === 'manual' && (
-              <textarea
-                value={userAgent}
-                onChange={(e) => setUserAgent(e.target.value)}
+            <label className={labelCls}>User Agent List</label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
                 disabled={submitting}
-                placeholder="Mozilla/5.0 ..."
-                rows={3}
-                className={`${inputCls} mt-3 resize-none`}
+                className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-300 transition hover:border-brand hover:text-white disabled:opacity-50"
+              >
+                Upload .txt File
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt"
+                onChange={handleUaFileChange}
+                className="hidden"
               />
-            )}
+              {userAgents.length > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-3 py-1 text-xs font-medium text-green-400">
+                  ✓ {userAgents.length.toLocaleString()} user agents loaded
+                </span>
+              )}
+            </div>
+            {errors.userAgents && <p className="mt-1 text-xs text-red-400">{errors.userAgents}</p>}
           </div>
         </div>
 

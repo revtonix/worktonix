@@ -12,17 +12,24 @@ interface Workspace {
   name: string;
   ownerId: string;
   ownerName: string;
-  status: 'ACTIVE' | 'PAUSED';
+  status: string;
+  taskCount?: number;
+  profileId?: string;
   config: {
     proxy?: { type?: string; host?: string; port?: number };
     location?: string;
+    userAgents?: string[];
   };
   createdAt: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-green-500/15 text-green-400',
+  READY: 'bg-green-500/15 text-green-400',
   PAUSED: 'bg-amber-500/15 text-amber-400',
+  PENDING: 'bg-amber-500/15 text-amber-400',
+  LAUNCHING: 'bg-blue-500/15 text-blue-400',
+  FAILED: 'bg-red-500/15 text-red-400',
 };
 
 export default function WorkspacesPage() {
@@ -91,31 +98,54 @@ export default function WorkspacesPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {workspaces.map((ws) => (
-            <div
-              key={ws.id}
-              className="rounded-xl border border-gray-800 bg-surface-card p-5 transition hover:border-gray-700"
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-semibold text-white">{ws.name}</h3>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[ws.status] ?? STATUS_COLORS.ACTIVE}`}>
-                  {ws.status}
-                </span>
+          {workspaces.map((ws) => {
+            const uaCount = Array.isArray(ws.config?.userAgents) ? ws.config.userAgents.length : 0;
+            return (
+              <div
+                key={ws.id}
+                className="rounded-xl border border-gray-800 bg-surface-card p-5 transition hover:border-gray-700"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="font-semibold text-white">{ws.name}</h3>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[ws.status] ?? STATUS_COLORS.ACTIVE}`}>
+                    {ws.status}
+                  </span>
+                </div>
+                <div className="space-y-1 text-sm text-gray-400">
+                  <p>Owner: <span className="text-gray-300">{ws.ownerName}</span></p>
+                  {ws.config?.proxy?.host && (
+                    <p>Proxy: <span className="text-gray-300">{ws.config.proxy.type}://{ws.config.proxy.host}:{ws.config.proxy.port}</span></p>
+                  )}
+                  {ws.config?.location && (
+                    <p>Location: <span className="text-gray-300">{ws.config.location}</span></p>
+                  )}
+                </div>
+
+                {/* ── New badges ──────────────────────────────────── */}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {typeof ws.taskCount === 'number' && ws.taskCount > 0 && (
+                    <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-400">
+                      Tasks: {ws.taskCount.toLocaleString()}
+                    </span>
+                  )}
+                  {uaCount > 0 && (
+                    <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-xs font-medium text-purple-400">
+                      UA: {uaCount.toLocaleString()} agents
+                    </span>
+                  )}
+                  {ws.profileId && (
+                    <span className="rounded-full bg-gray-500/15 px-2 py-0.5 font-mono text-xs text-gray-400">
+                      Profile: {ws.profileId}
+                    </span>
+                  )}
+                </div>
+
+                <p className="mt-3 text-xs text-gray-600">
+                  Created {new Date(ws.createdAt).toLocaleDateString()}
+                </p>
               </div>
-              <div className="space-y-1 text-sm text-gray-400">
-                <p>Owner: <span className="text-gray-300">{ws.ownerName}</span></p>
-                {ws.config?.proxy?.host && (
-                  <p>Proxy: <span className="text-gray-300">{ws.config.proxy.type}://{ws.config.proxy.host}:{ws.config.proxy.port}</span></p>
-                )}
-                {ws.config?.location && (
-                  <p>Location: <span className="text-gray-300">{ws.config.location}</span></p>
-                )}
-              </div>
-              <p className="mt-3 text-xs text-gray-600">
-                Created {new Date(ws.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </RequireRole>

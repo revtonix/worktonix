@@ -8,13 +8,23 @@ export interface StoredUser {
   createdAt: string;
 }
 
+export interface StaffTaskAssignment {
+  userId: string;
+  taskCount: number;
+  uaStart: number;
+  uaEnd: number;
+}
+
 export interface StoredWorkspace {
   id: string;
   name: string;
   ownerId: string;
   ownerName: string;
   config: Record<string, unknown>;
-  status: 'ACTIVE' | 'PAUSED';
+  status: 'ACTIVE' | 'PAUSED' | 'READY' | 'PENDING' | 'LAUNCHING' | 'FAILED';
+  taskCount: number;
+  profileId?: string;
+  assignments?: StaffTaskAssignment[];
   createdAt: string;
 }
 
@@ -51,6 +61,13 @@ class Store {
 
   addWorkspace(ws: StoredWorkspace): void {
     this.workspaces.push(ws);
+  }
+
+  updateWorkspace(id: string, data: Partial<StoredWorkspace>): StoredWorkspace | null {
+    const idx = this.workspaces.findIndex((w) => w.id === id);
+    if (idx === -1) return null;
+    this.workspaces[idx] = { ...this.workspaces[idx], ...data };
+    return this.workspaces[idx];
   }
 }
 

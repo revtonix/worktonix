@@ -52,6 +52,10 @@ export class CreateWorkspaceDto {
   taskCount?: number;
 
   @IsOptional()
+  @IsString()
+  profileId?: string;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => WorkspaceConfigDto)
   config?: WorkspaceConfigDto;

@@ -2,3 +2,5 @@ node_modules/
 dist/
 .env
 screenshots/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo

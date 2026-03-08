@@ -4,7 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "prisma generate && tsc --noEmit",
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node prisma/seed.js",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "repository": {
     "type": "git",
@@ -14,9 +23,18 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@prisma/client": "^6.6.0",
+    "@types/express": "^5.0.6",
     "axios": "^1.13.6",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.3.1",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
     "playwright": "^1.58.2",
+    "prisma": "^6.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

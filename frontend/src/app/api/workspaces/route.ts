@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyJwt } from '@/lib/jwt';
-
-interface Workspace {
-  id: string;
-  name: string;
-  ownerId: string;
-  config: Record<string, unknown>;
-  createdAt: string;
-}
-
-// In-memory store (resets on cold start — replace with a real DB in production)
-const workspaces: Workspace[] = [];
+import { store } from '@/lib/store';
 
 export async function GET(request: NextRequest) {
   const auth = request.headers.get('authorization');
@@ -20,7 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  return NextResponse.json(workspaces);
+  return NextResponse.json(store.workspaces);
 }
 
 export async function POST(request: NextRequest) {
@@ -38,15 +28,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Workspace name is required' }, { status: 400 });
   }
 
-  const workspace: Workspace = {
+  const ownerId = typeof body.ownerId === 'string' ? body.ownerId : payload.sub;
+  const owner = store.findUserById(ownerId);
+
+  store.addWorkspace({
     id: crypto.randomUUID(),
     name: body.name.trim(),
-    ownerId: typeof body.ownerId === 'string' ? body.ownerId : payload.sub,
+    ownerId,
+    ownerName: owner?.displayName ?? 'Unknown',
     config: typeof body.config === 'object' && body.config !== null ? body.config : {},
+    status: 'ACTIVE',
     createdAt: new Date().toISOString(),
-  };
+  });
 
-  workspaces.push(workspace);
-
-  return NextResponse.json(workspace, { status: 201 });
+  return NextResponse.json(store.workspaces[store.workspaces.length - 1], { status: 201 });
 }

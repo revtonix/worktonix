@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "prisma generate",
     "start": "node src/index.js",
     "dev": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -30,10 +31,9 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "playwright": "^1.58.2",
+    "prisma": "^6.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
-  "devDependencies": {
-    "prisma": "^6.6.0"
-  }
+  "devDependencies": {}
 }

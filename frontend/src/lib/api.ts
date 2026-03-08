@@ -29,7 +29,9 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
   const res = await fetch(`${API_BASE}${path}`, {
     ...rest,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body
+      ? typeof body === 'string' ? body : JSON.stringify(body)
+      : undefined,
   });
 
   if (!res.ok) {
@@ -41,8 +43,18 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
 }
 
 export async function login(email: string, password: string) {
-  return api<{ token: string; userId: string; name: string; role: string }>(
-    '/api/auth/login',
-    { method: 'POST', body: { email, password } },
-  );
+  const data = await api<{
+    token?: string;
+    accessToken?: string;
+    userId: string;
+    name: string;
+    role: string;
+  }>('/api/auth/login', { method: 'POST', body: { email, password } });
+
+  return {
+    token: data.token || data.accessToken || '',
+    userId: data.userId,
+    name: data.name,
+    role: data.role,
+  };
 }

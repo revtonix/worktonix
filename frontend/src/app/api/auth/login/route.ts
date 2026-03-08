@@ -26,6 +26,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     token,
+    accessToken: token,
     userId: user.id,
     name: user.displayName,
     role: user.role,

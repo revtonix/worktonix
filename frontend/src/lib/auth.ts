@@ -79,7 +79,19 @@ export function getNavItemsForRole(role: Role): NavItem[] {
   return NAV_ITEMS.filter((item) => item.roles.includes(role));
 }
 
+/** Check if the app is running inside the WorkTonix Electron shell. */
+function isRunningInElectron(): boolean {
+  if (typeof window === 'undefined') return false;
+  if ((window as any).worktonix?.isElectron) return true;
+  if (navigator.userAgent.includes('WorkTonix-Electron')) return true;
+  return false;
+}
+
 /** Roles that should use the Electron desktop app instead of the web dashboard. */
 export function shouldUseElectron(role: Role): boolean {
+  // During SSR, window/navigator are unavailable — skip redirect to avoid
+  // server-rendering the /use-electron page before the client can detect Electron.
+  if (typeof window === 'undefined') return false;
+  if (isRunningInElectron()) return false;
   return role === 'STAFF' || role === 'OPERATOR';
 }

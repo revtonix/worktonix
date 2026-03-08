@@ -10,6 +10,10 @@ export default function UseElectronPage() {
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
+    // If already running inside Electron, skip this page and go to dashboard
+    if (!loading && user && navigator.userAgent.includes('WorkTonix-Electron')) {
+      router.replace('/dashboard');
+    }
   }, [user, loading, router]);
 
   if (loading || !user) return null;
@@ -36,7 +40,9 @@ export default function UseElectronPage() {
 
         <div className="flex flex-col gap-3">
           <a
-            href="#"
+            href="https://github.com/revtonix/worktonix/releases/latest"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-block rounded-lg bg-brand px-6 py-2.5 font-medium text-white transition hover:bg-brand-dark"
           >
             Download Desktop App

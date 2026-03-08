@@ -31,12 +31,19 @@ export default function WorkspacesPage() {
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    api<Workspace[]>('/api/workspaces')
-      .then((data) => { if (!cancelled) setWorkspaces(data); })
-      .catch(() => {})
+    api<Workspace[] | { data: Workspace[] }>('/api/workspaces')
+      .then((res) => {
+        if (cancelled) return;
+        const list = Array.isArray(res) ? res : Array.isArray(res.data) ? res.data : [];
+        setWorkspaces(list);
+      })
+      .catch((err) => {
+        if (!cancelled) setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces');
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
@@ -60,11 +67,17 @@ export default function WorkspacesPage() {
         )}
       </div>
 
+      {fetchError && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {fetchError}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
         </div>
-      ) : workspaces.length === 0 ? (
+      ) : workspaces.length === 0 && !fetchError ? (
         <div className="rounded-xl border border-gray-800 bg-surface-card p-8 text-center">
           <p className="text-gray-400">No workspaces yet.</p>
           {canCreate && (

@@ -36,13 +36,26 @@ export default function StaffPage() {
 
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    api<StaffUser[]>('/api/users')
-      .then((data) => { if (!cancelled) setStaff(data); })
-      .catch(() => {})
+    api<StaffUser[] | { data: StaffUser[] }>('/api/users')
+      .then((res) => {
+        if (cancelled) return;
+        // Handle both plain array and { data: [...] } response shapes
+        const list = Array.isArray(res) ? res : Array.isArray(res.data) ? res.data : [];
+        // Normalize: Railway may use 'name' instead of 'displayName'
+        const normalized = list.map((u) => ({
+          ...u,
+          displayName: u.displayName || (u as unknown as Record<string, string>).name || u.email,
+        }));
+        setStaff(normalized);
+      })
+      .catch((err) => {
+        if (!cancelled) setFetchError(err instanceof Error ? err.message : 'Failed to load staff');
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
@@ -71,11 +84,17 @@ export default function StaffPage() {
         )}
       </div>
 
+      {fetchError && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {fetchError}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex h-64 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
         </div>
-      ) : staff.length === 0 ? (
+      ) : staff.length === 0 && !fetchError ? (
         <div className="rounded-xl border border-gray-800 bg-surface-card p-8 text-center text-gray-500">
           No staff members found.
         </div>

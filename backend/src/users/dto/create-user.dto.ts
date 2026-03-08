@@ -28,8 +28,6 @@ export class CreateUserDto {
   /**
    * User role — must be one of: ADMIN, TECH, MANAGER, OPERATOR, STAFF.
    */
-  @IsEnum(Role, {
-    message: 'role must be one of: ADMIN, TECH, MANAGER, OPERATOR, STAFF',
-  })
+  @IsEnum(Role)
   role: Role;
 }

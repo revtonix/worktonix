@@ -19,8 +19,6 @@ export class UpdateUserDto {
    * User role — must be one of: ADMIN, TECH, MANAGER, OPERATOR, STAFF.
    */
   @IsOptional()
-  @IsEnum(Role, {
-    message: 'role must be one of: ADMIN, TECH, MANAGER, OPERATOR, STAFF',
-  })
+  @IsEnum(Role)
   role?: Role;
 }

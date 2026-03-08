@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 
-const API_URL = 'https://worktonix-workspace-production.up.railway.app';
+const APP_URL = 'https://worktonix.vercel.app';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -19,7 +19,7 @@ function createWindow(): void {
     },
   });
 
-  mainWindow.loadURL(API_URL);
+  mainWindow.loadURL(APP_URL);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -36,4 +36,4 @@ app.on('activate', () => {
   if (mainWindow === null) createWindow();
 });
 
-ipcMain.handle('get-api-url', () => API_URL);
+ipcMain.handle('get-api-url', () => APP_URL);

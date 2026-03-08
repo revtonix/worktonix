@@ -26,7 +26,10 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  app.userAgentFallback = `${app.userAgentFallback} WorkTonix-Electron`;
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   app.quit();

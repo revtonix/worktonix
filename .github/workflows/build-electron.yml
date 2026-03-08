@@ -34,20 +34,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get version
-        id: version
-        shell: bash
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
-
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: WorkTonix v${{ steps.version.outputs.version }}
+          tag_name: v1.0.0
+          name: WorkTonix v1.0.0
           body: |
             ## WorkTonix Desktop App
 
-            Download and install `WorkTonix-Setup-${{ steps.version.outputs.version }}.exe` to get started.
+            Download and install the `.exe` file below to get started.
           files: release/*.exe
           make_latest: true
         env:

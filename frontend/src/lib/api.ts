@@ -2,8 +2,15 @@ import { getStoredToken } from './auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-interface RequestOptions extends Omit<RequestInit, 'body'> {
+interface RequestOptions {
+  method?: string;
+  headers?: Record<string, string>;
   body?: unknown;
+  signal?: AbortSignal;
+  cache?: RequestCache;
+  credentials?: RequestCredentials;
+  mode?: RequestMode;
+  redirect?: RequestRedirect;
 }
 
 export async function api<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {

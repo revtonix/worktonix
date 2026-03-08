@@ -19,7 +19,7 @@ export default function WorkspacesPage() {
         </div>
         {canCreate && (
           <button className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
-            + New Workspace
+            + Create Workspace
           </button>
         )}
       </div>

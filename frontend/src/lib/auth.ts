@@ -69,7 +69,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Overview',   href: '/dashboard',            minRole: 'MANAGER' },
   { label: 'Workspaces', href: '/dashboard/workspaces',  minRole: 'MANAGER' },
-  { label: 'Staff',      href: '/dashboard/staff',       minRole: 'MANAGER' },
+  { label: 'Staff Management', href: '/dashboard/staff',  minRole: 'MANAGER' },
   { label: 'Billing',    href: '/dashboard/billing',     minRole: 'ADMIN' },
   { label: 'Settings',   href: '/dashboard/settings',    minRole: 'ADMIN' },
 ];

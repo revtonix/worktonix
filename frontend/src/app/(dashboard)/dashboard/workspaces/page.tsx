@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
 import RequireRole from '@/components/require-role';
 import { hasMinimumRole } from '@/lib/auth';
@@ -18,9 +19,12 @@ export default function WorkspacesPage() {
           </p>
         </div>
         {canCreate && (
-          <button className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
-            + Create Workspace
-          </button>
+          <Link
+            href="/dashboard/workspaces/new"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark"
+          >
+            + New Workspace
+          </Link>
         )}
       </div>
 

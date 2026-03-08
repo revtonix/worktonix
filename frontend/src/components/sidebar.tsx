@@ -82,7 +82,7 @@ export default function Sidebar() {
               </Link>
               {item.label === 'Workspaces' && canCreate && (
                 <Link
-                  href="/dashboard/workspaces?create=true"
+                  href="/dashboard/workspaces/new"
                   className="rounded-md p-1.5 text-gray-500 transition hover:bg-brand/15 hover:text-brand"
                   title="Create Workspace"
                 >

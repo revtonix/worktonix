@@ -1,0 +1,360 @@
+'use client';
+
+import { useState, useEffect, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/auth-provider';
+import { hasMinimumRole } from '@/lib/auth';
+import { api } from '@/lib/api';
+
+/* ── US state list for the Location dropdown ──────────────────────── */
+const US_STATES = [
+  'Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut',
+  'Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa',
+  'Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan',
+  'Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada',
+  'New Hampshire','New Jersey','New Mexico','New York','North Carolina',
+  'North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island',
+  'South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont',
+  'Virginia','Washington','West Virginia','Wisconsin','Wyoming',
+] as const;
+
+/* ── Types ────────────────────────────────────────────────────────── */
+interface StaffUser {
+  id: string;
+  displayName: string;
+  email: string;
+  role: string;
+}
+
+interface FormErrors {
+  name?: string;
+  ownerId?: string;
+  proxyHost?: string;
+  proxyPort?: string;
+}
+
+/* ── Shared input class ───────────────────────────────────────────── */
+const inputCls =
+  'w-full rounded-lg border border-gray-700 bg-surface px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-brand disabled:opacity-50';
+const labelCls = 'mb-1 block text-sm text-gray-400';
+const sectionCls = 'mt-6 border-t border-gray-800 pt-5';
+
+export default function NewWorkspacePage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  /* ── Access guard ─────────────────────────────────────────────── */
+  useEffect(() => {
+    if (loading) return;
+    if (!user || !hasMinimumRole(user.role, 'TECH')) {
+      router.replace('/dashboard/workspaces');
+    }
+  }, [user, loading, router]);
+
+  /* ── Staff dropdown state ─────────────────────────────────────── */
+  const [staff, setStaff] = useState<StaffUser[]>([]);
+  const [staffLoading, setStaffLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api<StaffUser[]>('/api/users?role=OPERATOR')
+      .then((data) => { if (!cancelled) setStaff(data); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setStaffLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  /* ── Form state ───────────────────────────────────────────────── */
+  const [name, setName] = useState('');
+  const [ownerId, setOwnerId] = useState('');
+  const [proxyType, setProxyType] = useState<'HTTP' | 'HTTPS' | 'SOCKS5'>('HTTP');
+  const [proxyHost, setProxyHost] = useState('');
+  const [proxyPort, setProxyPort] = useState('');
+  const [proxyUsername, setProxyUsername] = useState('');
+  const [proxyPassword, setProxyPassword] = useState('');
+  const [location, setLocation] = useState('');
+  const [uaMode, setUaMode] = useState<'random' | 'manual'>('random');
+  const [userAgent, setUserAgent] = useState('');
+
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [serverError, setServerError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  /* ── Validation ───────────────────────────────────────────────── */
+  function validate(): FormErrors {
+    const e: FormErrors = {};
+    if (!name.trim() || name.trim().length < 3) e.name = 'Name is required (min 3 characters)';
+    if (!ownerId) e.ownerId = 'Please select a staff member';
+    if (!proxyHost.trim()) e.proxyHost = 'Proxy host is required';
+    const port = Number(proxyPort);
+    if (!proxyPort || !Number.isInteger(port) || port < 1 || port > 65535) {
+      e.proxyPort = 'Port must be an integer between 1 and 65535';
+    }
+    return e;
+  }
+
+  /* ── Submit ───────────────────────────────────────────────────── */
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setServerError('');
+
+    const v = validate();
+    setErrors(v);
+    if (Object.keys(v).length > 0) return;
+
+    setSubmitting(true);
+    try {
+      await api('/api/workspaces', {
+        method: 'POST',
+        body: {
+          name: name.trim(),
+          ownerId,
+          config: {
+            proxy: {
+              type: proxyType,
+              host: proxyHost.trim(),
+              port: Number(proxyPort),
+              username: proxyUsername.trim() || undefined,
+              password: proxyPassword || undefined,
+            },
+            location: location || undefined,
+            userAgent: uaMode === 'manual' ? userAgent.trim() : 'random',
+          },
+        },
+      });
+      router.push('/dashboard/workspaces');
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Failed to create workspace');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  /* ── Guard render ─────────────────────────────────────────────── */
+  if (loading || !user) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <h1 className="mb-1 text-2xl font-bold text-white">Create Workspace</h1>
+      <p className="mb-6 text-sm text-gray-400">
+        Configure a new browser workspace with proxy and fingerprint settings.
+      </p>
+
+      <form
+        onSubmit={handleSubmit}
+        className="rounded-xl border border-gray-800 bg-surface-card p-6 space-y-5"
+      >
+        {serverError && (
+          <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">{serverError}</div>
+        )}
+
+        {/* ── Workspace Name ──────────────────────────────────── */}
+        <div>
+          <label htmlFor="ws-name" className={labelCls}>Workspace Name</label>
+          <input
+            id="ws-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={submitting}
+            placeholder="e.g. US-East Profile 1"
+            className={inputCls}
+          />
+          {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
+        </div>
+
+        {/* ── Assign to Staff ─────────────────────────────────── */}
+        <div>
+          <label htmlFor="ws-owner" className={labelCls}>Assign to Staff</label>
+          <select
+            id="ws-owner"
+            value={ownerId}
+            onChange={(e) => setOwnerId(e.target.value)}
+            disabled={submitting || staffLoading}
+            className={inputCls}
+          >
+            <option value="">
+              {staffLoading ? 'Loading staff...' : '— Select a staff member —'}
+            </option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.displayName} ({s.email})
+              </option>
+            ))}
+          </select>
+          {errors.ownerId && <p className="mt-1 text-xs text-red-400">{errors.ownerId}</p>}
+        </div>
+
+        {/* ── Proxy Settings ──────────────────────────────────── */}
+        <div className={sectionCls}>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Proxy Settings
+          </h2>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="proxy-type" className={labelCls}>Proxy Type</label>
+              <select
+                id="proxy-type"
+                value={proxyType}
+                onChange={(e) => setProxyType(e.target.value as 'HTTP' | 'HTTPS' | 'SOCKS5')}
+                disabled={submitting}
+                className={inputCls}
+              >
+                <option value="HTTP">HTTP</option>
+                <option value="HTTPS">HTTPS</option>
+                <option value="SOCKS5">SOCKS5</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="proxy-host" className={labelCls}>Proxy Host</label>
+              <input
+                id="proxy-host"
+                type="text"
+                value={proxyHost}
+                onChange={(e) => setProxyHost(e.target.value)}
+                disabled={submitting}
+                placeholder="192.168.1.1"
+                className={inputCls}
+              />
+              {errors.proxyHost && <p className="mt-1 text-xs text-red-400">{errors.proxyHost}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="proxy-port" className={labelCls}>Proxy Port</label>
+              <input
+                id="proxy-port"
+                type="number"
+                min={1}
+                max={65535}
+                value={proxyPort}
+                onChange={(e) => setProxyPort(e.target.value)}
+                disabled={submitting}
+                placeholder="8080"
+                className={inputCls}
+              />
+              {errors.proxyPort && <p className="mt-1 text-xs text-red-400">{errors.proxyPort}</p>}
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="proxy-user" className={labelCls}>Proxy Username</label>
+              <input
+                id="proxy-user"
+                type="text"
+                value={proxyUsername}
+                onChange={(e) => setProxyUsername(e.target.value)}
+                disabled={submitting}
+                placeholder="(optional)"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label htmlFor="proxy-pass" className={labelCls}>Proxy Password</label>
+              <input
+                id="proxy-pass"
+                type="password"
+                value={proxyPassword}
+                onChange={(e) => setProxyPassword(e.target.value)}
+                disabled={submitting}
+                placeholder="(optional)"
+                className={inputCls}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Browser Settings ────────────────────────────────── */}
+        <div className={sectionCls}>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            Browser Settings
+          </h2>
+
+          <div>
+            <label htmlFor="ws-location" className={labelCls}>Location</label>
+            <select
+              id="ws-location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              disabled={submitting}
+              className={inputCls}
+            >
+              <option value="">— Select a state (optional) —</option>
+              {US_STATES.map((st) => (
+                <option key={st} value={st}>{st}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-4">
+            <span className={labelCls}>User Agent</span>
+            <div className="mt-2 flex items-center gap-6">
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="radio"
+                  name="ua-mode"
+                  checked={uaMode === 'random'}
+                  onChange={() => setUaMode('random')}
+                  disabled={submitting}
+                  className="accent-brand"
+                />
+                Random
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="radio"
+                  name="ua-mode"
+                  checked={uaMode === 'manual'}
+                  onChange={() => setUaMode('manual')}
+                  disabled={submitting}
+                  className="accent-brand"
+                />
+                Manual
+              </label>
+            </div>
+            {uaMode === 'manual' && (
+              <textarea
+                value={userAgent}
+                onChange={(e) => setUserAgent(e.target.value)}
+                disabled={submitting}
+                placeholder="Mozilla/5.0 ..."
+                rows={3}
+                className={`${inputCls} mt-3 resize-none`}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ── Submit ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard/workspaces')}
+            disabled={submitting}
+            className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-gray-400 transition hover:border-gray-500 hover:text-white disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="flex items-center gap-2 rounded-lg bg-brand px-5 py-2 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-50"
+          >
+            {submitting && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            )}
+            {submitting ? 'Creating...' : 'Create Workspace'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}

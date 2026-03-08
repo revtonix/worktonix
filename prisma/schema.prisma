@@ -41,6 +41,7 @@ model Workspace {
   name      String
   profileId String?
   status    WorkspaceStatus @default(idle)
+  config    Json?
   userId    String?
   user      User?           @relation(fields: [userId], references: [id])
   createdAt DateTime        @default(now())

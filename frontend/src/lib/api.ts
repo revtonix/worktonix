@@ -42,17 +42,29 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
   return res.json();
 }
 
-export async function login(email: string, password: string) {
-  const data = await api<{
-    token?: string;
-    accessToken?: string;
-    userId: string;
-    name: string;
-    role: string;
-  }>('/api/auth/login', { method: 'POST', body: { email, password } });
+interface LoginApiResponse {
+  token?: string;
+  accessToken?: string;
+  userId: string;
+  name: string;
+  role: string;
+}
+
+interface LoginResult {
+  token: string;
+  userId: string;
+  name: string;
+  role: string;
+}
+
+export async function login(email: string, password: string): Promise<LoginResult> {
+  const data = await api<LoginApiResponse>(
+    '/api/auth/login',
+    { method: 'POST', body: { email, password } },
+  );
 
   return {
-    token: data.token || data.accessToken || '',
+    token: data.token ?? data.accessToken ?? '',
     userId: data.userId,
     name: data.name,
     role: data.role,

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useAuth } from '@/components/auth-provider';
+import { useAuth } from '@/hooks/use-auth';
 import RequireRole from '@/components/require-role';
 import { hasMinimumRole } from '@/lib/auth';
 

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth-provider';
+import { useAuth } from '@/hooks/use-auth';
 import Sidebar from '@/components/sidebar';
 import { shouldUseElectron } from '@/lib/auth';
 

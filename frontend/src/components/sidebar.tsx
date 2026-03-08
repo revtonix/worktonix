@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from './auth-provider';
+import { useAuth } from '@/hooks/use-auth';
 import { getNavItemsForRole, hasMinimumRole } from '@/lib/auth';
 
 /* Simple SVG icons keyed by nav item label */

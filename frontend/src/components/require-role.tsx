@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from './auth-provider';
+import { useAuth } from '@/hooks/use-auth';
 import { type Role, hasMinimumRole, shouldUseElectron } from '@/lib/auth';
 
 interface Props {

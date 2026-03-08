@@ -8,7 +8,14 @@ const exampleRoutes = require('./routes/example-usage');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://worktonix.vercel.app',
+    'https://worktonix-workspace.vercel.app',
+    'http://localhost:3000',
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 
 // Auth routes — no role filtering on login

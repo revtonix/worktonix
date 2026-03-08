@@ -35,7 +35,7 @@ interface FormErrors {
 
 /* ── Shared input class ───────────────────────────────────────────── */
 const inputCls =
-  'w-full rounded-lg border border-gray-700 bg-surface px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-brand disabled:opacity-50';
+  'w-full rounded-lg border border-gray-700 px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-brand disabled:opacity-50 [background-color:#0f0f1a]';
 const labelCls = 'mb-1 block text-sm text-gray-400';
 const sectionCls = 'mt-6 border-t border-gray-800 pt-5';
 

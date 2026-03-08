@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   const newUser = {
     id: crypto.randomUUID(),
     email: body.email as string,
-    password: 'changeme123',
+    password: typeof body.password === 'string' ? body.password : 'changeme123',
     displayName: body.displayName as string,
     role: body.role as 'ADMIN' | 'TECH' | 'MANAGER' | 'OPERATOR' | 'STAFF',
   };

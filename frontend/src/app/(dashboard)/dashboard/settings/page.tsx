@@ -4,7 +4,7 @@ import { useState } from 'react';
 import RequireRole from '@/components/require-role';
 
 const inputCls =
-  'w-full rounded-lg border border-gray-700 bg-surface px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-brand disabled:opacity-50';
+  'w-full rounded-lg border border-gray-700 px-3 py-2 text-white placeholder-gray-500 outline-none focus:border-brand disabled:opacity-50 [background-color:#0f0f1a]';
 
 export default function SettingsPage() {
   const [apiUrl, setApiUrl] = useState('https://api.worktonix.io');

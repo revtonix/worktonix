@@ -137,7 +137,6 @@ export default function NewWorkspacePage() {
         body: {
           name: name.trim(),
           ownerId,
-          taskCount,
           config: {
             proxy: {
               type: proxyType,

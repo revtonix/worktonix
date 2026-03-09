@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import RequireRole from '@/components/require-role';
 import { hasMinimumRole } from '@/lib/auth';
 import { api } from '@/lib/api';
+
+interface AdsPowerProfile {
+  user_id: string;
+  serial_number: string;
+  name: string;
+}
 
 interface StaffUser {
   id: string;
@@ -44,30 +50,41 @@ export default function WorkspacesPage() {
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [staffList, setStaffList] = useState<StaffUser[]>([]);
+  const [adsPowerProfiles, setAdsPowerProfiles] = useState<AdsPowerProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
   const [reassigning, setReassigning] = useState<string | null>(null);
+  const [editingProfile, setEditingProfile] = useState<string | null>(null);
+  const [profileInput, setProfileInput] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const fetchWorkspaces = useCallback(() => {
+    api<Workspace[]>('/api/workspaces')
+      .then((list) => setWorkspaces(Array.isArray(list) ? list : []))
+      .catch((err) => setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces'))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    api<Workspace[]>('/api/workspaces')
-      .then((list) => {
-        if (cancelled) return;
-        setWorkspaces(Array.isArray(list) ? list : []);
-      })
-      .catch((err) => {
-        if (!cancelled) setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces');
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+    fetchWorkspaces();
 
     if (canCreate) {
       api<StaffUser[]>('/api/users?role=OPERATOR')
-        .then((data) => { if (!cancelled) setStaffList(data); })
+        .then((data) => setStaffList(data))
         .catch(() => {});
-    }
 
-    return () => { cancelled = true; };
-  }, [canCreate]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const bridge = typeof window !== 'undefined' ? (window as any).worktonix?.adspower : null;
+      if (bridge?.listProfiles) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        bridge.listProfiles().then((res: any) => {
+          if (res?.code === 0 && Array.isArray(res.data?.list)) {
+            setAdsPowerProfiles(res.data.list);
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [canCreate, fetchWorkspaces]);
 
   async function handleReassign(workspaceId: string, newOwnerId: string) {
     setReassigning(workspaceId);
@@ -81,6 +98,21 @@ export default function WorkspacesPage() {
       );
     } catch { /* ignore */ }
     setReassigning(null);
+  }
+
+  async function handleSaveProfile(workspaceId: string) {
+    setSavingProfile(true);
+    try {
+      const updated = await api<Workspace>(`/api/workspaces/${workspaceId}`, {
+        method: 'PATCH',
+        body: { profileId: profileInput.trim() },
+      });
+      setWorkspaces((prev) =>
+        prev.map((ws) => (ws.id === workspaceId ? { ...ws, ...updated } : ws)),
+      );
+      setEditingProfile(null);
+    } catch { /* ignore */ }
+    setSavingProfile(false);
   }
 
   return (
@@ -170,7 +202,7 @@ export default function WorkspacesPage() {
                   )}
                 </div>
 
-                {/* ── New badges ──────────────────────────────────── */}
+                {/* ── Badges ─────────────────────────────────────── */}
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {typeof ws.taskCount === 'number' && ws.taskCount > 0 && (
                     <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-400">
@@ -182,12 +214,67 @@ export default function WorkspacesPage() {
                       UA: {uaCount.toLocaleString()} agents
                     </span>
                   )}
-                  {ws.profileId && (
-                    <span className="rounded-full bg-gray-500/15 px-2 py-0.5 font-mono text-xs text-gray-400">
-                      Profile: {ws.profileId}
-                    </span>
-                  )}
                 </div>
+
+                {/* ── Profile ID (editable) ─────────────────────── */}
+                {canCreate && (
+                  <div className="mt-3">
+                    {editingProfile === ws.id ? (
+                      <div className="flex items-center gap-2">
+                        {adsPowerProfiles.length > 0 ? (
+                          <select
+                            value={profileInput}
+                            onChange={(e) => setProfileInput(e.target.value)}
+                            disabled={savingProfile}
+                            className="flex-1 rounded border border-gray-700 px-2 py-1 text-xs text-gray-300 outline-none focus:border-brand [background-color:#0f0f1a]"
+                          >
+                            <option value="">— Select profile —</option>
+                            {adsPowerProfiles.map((p) => (
+                              <option key={p.user_id} value={p.serial_number}>
+                                {p.name || p.serial_number} (#{p.serial_number})
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={profileInput}
+                            onChange={(e) => setProfileInput(e.target.value)}
+                            disabled={savingProfile}
+                            placeholder="e.g. k1a7qgw8"
+                            className="flex-1 rounded border border-gray-700 px-2 py-1 text-xs text-gray-300 outline-none focus:border-brand [background-color:#0f0f1a]"
+                          />
+                        )}
+                        <button
+                          onClick={() => handleSaveProfile(ws.id)}
+                          disabled={savingProfile || !profileInput.trim()}
+                          className="rounded bg-brand px-2 py-1 text-xs font-medium text-white disabled:opacity-50"
+                        >
+                          {savingProfile ? '...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => setEditingProfile(null)}
+                          disabled={savingProfile}
+                          className="rounded border border-gray-700 px-2 py-1 text-xs text-gray-400"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEditingProfile(ws.id); setProfileInput(ws.profileId || ''); }}
+                        className="text-xs text-gray-400 hover:text-brand transition"
+                      >
+                        {ws.profileId
+                          ? <>Profile: <span className="font-mono text-gray-300">{ws.profileId}</span> (edit)</>
+                          : '+ Set AdsPower Profile'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {!canCreate && ws.profileId && (
+                  <p className="mt-3 font-mono text-xs text-gray-400">Profile: {ws.profileId}</p>
+                )}
 
                 <p className="mt-3 text-xs text-gray-600">
                   Created {new Date(ws.createdAt).toLocaleDateString()}

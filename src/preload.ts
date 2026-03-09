@@ -8,5 +8,6 @@ contextBridge.exposeInMainWorld('worktonix', {
     start: (profileId: string) => ipcRenderer.invoke('adspower:start', profileId),
     stop: (profileId: string) => ipcRenderer.invoke('adspower:stop', profileId),
     status: () => ipcRenderer.invoke('adspower:status'),
+    listProfiles: () => ipcRenderer.invoke('adspower:list-profiles'),
   },
 });

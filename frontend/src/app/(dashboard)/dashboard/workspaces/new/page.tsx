@@ -28,6 +28,12 @@ interface StaffUser {
   role: string;
 }
 
+interface AdsPowerProfile {
+  user_id: string;
+  serial_number: string;
+  name: string;
+}
+
 interface FormErrors {
   name?: string;
   ownerId?: string;
@@ -65,6 +71,32 @@ export default function NewWorkspacePage() {
       .then((data) => { if (!cancelled) setStaff(data); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setStaffLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  /* ── AdsPower profiles state ─────────────────────────────────── */
+  const [adsPowerProfiles, setAdsPowerProfiles] = useState<AdsPowerProfile[]>([]);
+  const [profilesLoading, setProfilesLoading] = useState(true);
+  const [profileId, setProfileId] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bridge = typeof window !== 'undefined' ? (window as any).worktonix?.adspower : null;
+    if (bridge?.listProfiles) {
+      bridge.listProfiles()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then((res: any) => {
+          if (cancelled) return;
+          if (res?.code === 0 && Array.isArray(res.data?.list)) {
+            setAdsPowerProfiles(res.data.list);
+          }
+        })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setProfilesLoading(false); });
+    } else {
+      setProfilesLoading(false);
+    }
     return () => { cancelled = true; };
   }, []);
 
@@ -137,6 +169,8 @@ export default function NewWorkspacePage() {
         body: {
           name: name.trim(),
           ownerId,
+          taskCount,
+          profileId: profileId || undefined,
           config: {
             proxy: {
               type: proxyType,
@@ -217,6 +251,42 @@ export default function NewWorkspacePage() {
             ))}
           </select>
           {errors.ownerId && <p className="mt-1 text-xs text-red-400">{errors.ownerId}</p>}
+        </div>
+
+        {/* ── AdsPower Profile ───────────────────────────────── */}
+        <div>
+          <label htmlFor="ws-profile" className={labelCls}>AdsPower Profile</label>
+          {adsPowerProfiles.length > 0 ? (
+            <select
+              id="ws-profile"
+              value={profileId}
+              onChange={(e) => setProfileId(e.target.value)}
+              disabled={submitting}
+              className={inputCls}
+            >
+              <option value="">— Select a profile (optional) —</option>
+              {adsPowerProfiles.map((p) => (
+                <option key={p.user_id} value={p.serial_number}>
+                  {p.name || p.serial_number} (#{p.serial_number})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="ws-profile"
+              type="text"
+              value={profileId}
+              onChange={(e) => setProfileId(e.target.value)}
+              disabled={submitting}
+              placeholder={profilesLoading ? 'Loading profiles...' : 'e.g. k1a7qgw8'}
+              className={inputCls}
+            />
+          )}
+          <p className="mt-1 text-xs text-gray-600">
+            {adsPowerProfiles.length > 0
+              ? 'Select from your AdsPower profiles'
+              : 'Enter the AdsPower profile serial number (open AdsPower to load dropdown)'}
+          </p>
         </div>
 
         {/* ── Total Tasks ──────────────────────────────────────── */}

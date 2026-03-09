@@ -69,6 +69,10 @@ ipcMain.handle('adspower:status', async () => {
   return adsPowerFetch('/api/v1/status');
 });
 
+ipcMain.handle('adspower:list-profiles', async () => {
+  return adsPowerFetch('/api/v1/user/list?page_size=100');
+});
+
 ipcMain.handle('get-api-url', () => APP_URL);
 
 // ── App lifecycle ──

@@ -350,6 +350,21 @@ function DistributePanel({ workspace, onUpdated }: { workspace: Workspace; onUpd
 /*  Operator / Staff Dashboard                                       */
 /* ══════════════════════════════════════════════════════════════════ */
 
+const ADSPOWER_BASE = 'http://local.adspower.net:50325';
+
+async function adsPowerStart(profileId: string): Promise<{ debugPort: string; webdriver: string }> {
+  const res = await fetch(`${ADSPOWER_BASE}/api/v1/browser/start?user_id=${encodeURIComponent(profileId)}`);
+  const body = await res.json();
+  if (body.code !== 0) throw new Error(body.msg || 'AdsPower failed to start browser');
+  return { debugPort: body.data?.debug_port ?? '', webdriver: body.data?.webdriver ?? '' };
+}
+
+async function adsPowerStop(profileId: string): Promise<void> {
+  const res = await fetch(`${ADSPOWER_BASE}/api/v1/browser/stop?user_id=${encodeURIComponent(profileId)}`);
+  const body = await res.json();
+  if (body.code !== 0) throw new Error(body.msg || 'AdsPower failed to stop browser');
+}
+
 function OperatorDashboard({ userId }: { userId: string }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -367,31 +382,60 @@ function OperatorDashboard({ userId }: { userId: string }) {
 
   useEffect(() => { fetchWorkspaces(); }, [fetchWorkspaces]);
 
+  async function updateBackendStatus(workspaceId: string, status: string, debugPort?: string) {
+    try {
+      await api(`/api/workspaces/${workspaceId}/status`, {
+        method: 'PATCH',
+        body: { status, ...(debugPort && { debugPort }) },
+      });
+    } catch { /* best-effort status sync */ }
+  }
+
   async function handleLaunch(ws: Workspace) {
     if (!ws.profileId) {
-      setLaunchError('No profile ID configured for this workspace.');
+      setLaunchError('No profile ID configured for this workspace. Ask your admin to set one.');
       return;
     }
     setLaunching(ws.id);
     setLaunchError('');
+
+    await updateBackendStatus(ws.id, 'LAUNCHING');
+
     try {
-      await api(`/api/workspaces/${ws.id}/launch`, { method: 'POST' });
+      const result = await adsPowerStart(ws.profileId);
+      await updateBackendStatus(ws.id, 'RUNNING', result.debugPort);
       fetchWorkspaces();
     } catch (err) {
-      setLaunchError(err instanceof Error ? err.message : 'Failed to launch workspace');
+      const msg = err instanceof Error ? err.message : 'Failed to launch';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setLaunchError('Cannot reach AdsPower. Make sure the AdsPower desktop app is running on this computer.');
+      } else {
+        setLaunchError(msg);
+      }
+      await updateBackendStatus(ws.id, 'ERROR');
+      fetchWorkspaces();
     } finally {
       setLaunching(null);
     }
   }
 
   async function handleStop(ws: Workspace) {
+    if (!ws.profileId) return;
     setLaunching(ws.id);
     setLaunchError('');
+
     try {
-      await api(`/api/workspaces/${ws.id}/stop`, { method: 'POST' });
+      await adsPowerStop(ws.profileId);
+      await updateBackendStatus(ws.id, 'STOPPED');
       fetchWorkspaces();
     } catch (err) {
-      setLaunchError(err instanceof Error ? err.message : 'Failed to stop workspace');
+      const msg = err instanceof Error ? err.message : 'Failed to stop';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setLaunchError('Cannot reach AdsPower. Make sure the AdsPower desktop app is running.');
+      } else {
+        setLaunchError(msg);
+      }
+      fetchWorkspaces();
     } finally {
       setLaunching(null);
     }

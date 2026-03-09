@@ -350,20 +350,41 @@ function DistributePanel({ workspace, onUpdated }: { workspace: Workspace; onUpd
 /*  Operator / Staff Dashboard                                       */
 /* ══════════════════════════════════════════════════════════════════ */
 
-const ADSPOWER_BASE = 'http://local.adspower.net:50325';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function getAdsPowerBridge(): { start: (id: string) => Promise<any>; stop: (id: string) => Promise<any> } | null {
+  if (typeof window === 'undefined') return null;
+  return (window as any).worktonix?.adspower ?? null;
+}
 
 async function adsPowerStart(profileId: string): Promise<{ debugPort: string; webdriver: string }> {
-  const res = await fetch(`${ADSPOWER_BASE}/api/v1/browser/start?user_id=${encodeURIComponent(profileId)}`);
-  const body = await res.json();
+  const bridge = getAdsPowerBridge();
+  let body: any;
+
+  if (bridge) {
+    body = await bridge.start(profileId);
+  } else {
+    const res = await fetch(`http://local.adspower.net:50325/api/v1/browser/start?user_id=${encodeURIComponent(profileId)}`);
+    body = await res.json();
+  }
+
   if (body.code !== 0) throw new Error(body.msg || 'AdsPower failed to start browser');
   return { debugPort: body.data?.debug_port ?? '', webdriver: body.data?.webdriver ?? '' };
 }
 
 async function adsPowerStop(profileId: string): Promise<void> {
-  const res = await fetch(`${ADSPOWER_BASE}/api/v1/browser/stop?user_id=${encodeURIComponent(profileId)}`);
-  const body = await res.json();
+  const bridge = getAdsPowerBridge();
+  let body: any;
+
+  if (bridge) {
+    body = await bridge.stop(profileId);
+  } else {
+    const res = await fetch(`http://local.adspower.net:50325/api/v1/browser/stop?user_id=${encodeURIComponent(profileId)}`);
+    body = await res.json();
+  }
+
   if (body.code !== 0) throw new Error(body.msg || 'AdsPower failed to stop browser');
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 function OperatorDashboard({ userId }: { userId: string }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);

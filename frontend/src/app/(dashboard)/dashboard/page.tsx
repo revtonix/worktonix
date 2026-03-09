@@ -58,12 +58,11 @@ const ROLE_LABELS: Record<string, { title: string; subtitle: string }> = {
 
 /* ── Status badge color map ──────────────────────────────────────── */
 const STATUS_COLORS: Record<string, string> = {
-  READY: 'bg-green-500/15 text-green-400',
-  PENDING: 'bg-amber-500/15 text-amber-400',
+  IDLE: 'bg-gray-500/15 text-gray-400',
   LAUNCHING: 'bg-blue-500/15 text-blue-400',
-  ACTIVE: 'bg-green-500/15 text-green-400',
-  PAUSED: 'bg-gray-500/15 text-gray-400',
-  FAILED: 'bg-red-500/15 text-red-400',
+  RUNNING: 'bg-green-500/15 text-green-400',
+  STOPPED: 'bg-amber-500/15 text-amber-400',
+  ERROR: 'bg-red-500/15 text-red-400',
 };
 
 /* ══════════════════════════════════════════════════════════════════ */
@@ -118,11 +117,8 @@ function ManagerDashboard({ userId }: { userId: string }) {
 
   const fetchWorkspaces = useCallback(() => {
     setLoading(true);
-    api<Workspace[] | { data: Workspace[] }>('/api/workspaces')
-      .then((res) => {
-        const list = Array.isArray(res) ? res : Array.isArray(res.data) ? res.data : [];
-        setWorkspaces(list.filter((w) => w.ownerId === userId));
-      })
+    api<Workspace[]>(`/api/workspaces?ownerId=${userId}`)
+      .then((list) => setWorkspaces(Array.isArray(list) ? list : []))
       .catch((err) => setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces'))
       .finally(() => setLoading(false));
   }, [userId]);
@@ -267,11 +263,10 @@ function DistributePanel({ workspace, onUpdated }: { workspace: Workspace; onUpd
     }
 
     try {
-      await api('/api/workspaces', {
-        method: 'PUT',
+      await api(`/api/workspaces/${workspace.id}`, {
+        method: 'PATCH',
         body: {
-          id: workspace.id,
-          staffTaskAssignments: assignments,
+          config: { ...workspace.config, staffTaskAssignments: assignments },
         },
       });
       onUpdated();
@@ -359,21 +354,48 @@ function OperatorDashboard({ userId }: { userId: string }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
+  const [launching, setLaunching] = useState<string | null>(null);
+  const [launchError, setLaunchError] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    api<Workspace[] | { data: Workspace[] }>('/api/workspaces')
-      .then((res) => {
-        if (cancelled) return;
-        const list = Array.isArray(res) ? res : Array.isArray(res.data) ? res.data : [];
-        setWorkspaces(list.filter((w) => w.ownerId === userId));
-      })
-      .catch((err) => {
-        if (!cancelled) setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces');
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+  const fetchWorkspaces = useCallback(() => {
+    setLoading(true);
+    api<Workspace[]>(`/api/workspaces?ownerId=${userId}`)
+      .then((list) => setWorkspaces(Array.isArray(list) ? list : []))
+      .catch((err) => setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces'))
+      .finally(() => setLoading(false));
   }, [userId]);
+
+  useEffect(() => { fetchWorkspaces(); }, [fetchWorkspaces]);
+
+  async function handleLaunch(ws: Workspace) {
+    if (!ws.profileId) {
+      setLaunchError('No profile ID configured for this workspace.');
+      return;
+    }
+    setLaunching(ws.id);
+    setLaunchError('');
+    try {
+      await api(`/api/workspaces/${ws.id}/launch`, { method: 'POST' });
+      fetchWorkspaces();
+    } catch (err) {
+      setLaunchError(err instanceof Error ? err.message : 'Failed to launch workspace');
+    } finally {
+      setLaunching(null);
+    }
+  }
+
+  async function handleStop(ws: Workspace) {
+    setLaunching(ws.id);
+    setLaunchError('');
+    try {
+      await api(`/api/workspaces/${ws.id}/stop`, { method: 'POST' });
+      fetchWorkspaces();
+    } catch (err) {
+      setLaunchError(err instanceof Error ? err.message : 'Failed to stop workspace');
+    } finally {
+      setLaunching(null);
+    }
+  }
 
   return (
     <div>
@@ -383,6 +405,12 @@ function OperatorDashboard({ userId }: { userId: string }) {
       {fetchError && (
         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {fetchError}
+        </div>
+      )}
+
+      {launchError && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {launchError}
         </div>
       )}
 
@@ -399,6 +427,8 @@ function OperatorDashboard({ userId }: { userId: string }) {
           {workspaces.map((ws) => {
             const proxy = (ws.config as Record<string, any>)?.proxy;
             const location = (ws.config as Record<string, any>)?.location;
+            const isActive = ws.status === 'RUNNING';
+            const isLaunching = launching === ws.id;
             return (
               <div
                 key={ws.id}
@@ -421,17 +451,29 @@ function OperatorDashboard({ userId }: { userId: string }) {
                   {typeof ws.taskCount === 'number' && ws.taskCount > 0 && (
                     <p>Tasks: <span className="text-gray-300">{ws.taskCount.toLocaleString()}</span></p>
                   )}
+                  {ws.profileId && (
+                    <p>Profile: <span className="font-mono text-gray-300">{ws.profileId}</span></p>
+                  )}
                 </div>
 
                 <div className="mt-4">
-                  <button
-                    className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark"
-                    onClick={() => {
-                      alert('Launch functionality requires AdsPower integration. Profile ID: ' + (ws.profileId || 'not set'));
-                    }}
-                  >
-                    Launch Workspace
-                  </button>
+                  {isActive ? (
+                    <button
+                      disabled={isLaunching}
+                      className="w-full rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+                      onClick={() => handleStop(ws)}
+                    >
+                      {isLaunching ? 'Stopping...' : 'Stop Workspace'}
+                    </button>
+                  ) : (
+                    <button
+                      disabled={isLaunching || !ws.profileId}
+                      className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark disabled:opacity-50"
+                      onClick={() => handleLaunch(ws)}
+                    >
+                      {isLaunching ? 'Launching...' : ws.profileId ? 'Launch Workspace' : 'No Profile Set'}
+                    </button>
+                  )}
                 </div>
 
                 <p className="mt-3 text-xs text-gray-600">

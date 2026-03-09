@@ -31,12 +31,11 @@ interface Workspace {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-green-500/15 text-green-400',
-  READY: 'bg-green-500/15 text-green-400',
-  PAUSED: 'bg-amber-500/15 text-amber-400',
-  PENDING: 'bg-amber-500/15 text-amber-400',
+  IDLE: 'bg-gray-500/15 text-gray-400',
   LAUNCHING: 'bg-blue-500/15 text-blue-400',
-  FAILED: 'bg-red-500/15 text-red-400',
+  RUNNING: 'bg-green-500/15 text-green-400',
+  STOPPED: 'bg-amber-500/15 text-amber-400',
+  ERROR: 'bg-red-500/15 text-red-400',
 };
 
 export default function WorkspacesPage() {
@@ -51,11 +50,10 @@ export default function WorkspacesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    api<Workspace[] | { data: Workspace[] }>('/api/workspaces')
-      .then((res) => {
+    api<Workspace[]>('/api/workspaces')
+      .then((list) => {
         if (cancelled) return;
-        const list = Array.isArray(res) ? res : Array.isArray(res.data) ? res.data : [];
-        setWorkspaces(list);
+        setWorkspaces(Array.isArray(list) ? list : []);
       })
       .catch((err) => {
         if (!cancelled) setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces');
@@ -74,9 +72,9 @@ export default function WorkspacesPage() {
   async function handleReassign(workspaceId: string, newOwnerId: string) {
     setReassigning(workspaceId);
     try {
-      const updated = await api<Workspace>('/api/workspaces', {
-        method: 'PUT',
-        body: { id: workspaceId, ownerId: newOwnerId },
+      const updated = await api<Workspace>(`/api/workspaces/${workspaceId}`, {
+        method: 'PATCH',
+        body: { ownerId: newOwnerId },
       });
       setWorkspaces((prev) =>
         prev.map((ws) => (ws.id === workspaceId ? { ...ws, ...updated } : ws)),

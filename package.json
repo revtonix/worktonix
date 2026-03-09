@@ -14,7 +14,8 @@
     "electron:build": "tsc -p tsconfig.electron.json",
     "electron:start": "npm run electron:build && electron .",
     "electron:dist": "npm run electron:build && electron-builder",
-    "electron:dist:win": "npm run electron:build && electron-builder --win"
+    "electron:dist:win": "npm run electron:build && electron-builder --win",
+    "electron:dist:mac": "npm run electron:build && electron-builder --mac"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -62,6 +63,23 @@
           "target": "nsis",
           "arch": ["x64"]
         }
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
       ]
     },
     "nsis": {

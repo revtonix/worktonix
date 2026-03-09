@@ -7,11 +7,18 @@ import RequireRole from '@/components/require-role';
 import { hasMinimumRole } from '@/lib/auth';
 import { api } from '@/lib/api';
 
+interface StaffUser {
+  id: string;
+  displayName: string;
+  email: string;
+}
+
 interface Workspace {
   id: string;
   name: string;
   ownerId: string;
   ownerName: string;
+  owner?: { id: string; displayName: string; email: string };
   status: string;
   taskCount?: number;
   profileId?: string;
@@ -37,8 +44,10 @@ export default function WorkspacesPage() {
   const canCreate = user ? hasMinimumRole(user.role, 'TECH') : false;
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [staffList, setStaffList] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
+  const [reassigning, setReassigning] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,8 +61,29 @@ export default function WorkspacesPage() {
         if (!cancelled) setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
+
+    if (canCreate) {
+      api<StaffUser[]>('/api/users?role=OPERATOR')
+        .then((data) => { if (!cancelled) setStaffList(data); })
+        .catch(() => {});
+    }
+
     return () => { cancelled = true; };
-  }, []);
+  }, [canCreate]);
+
+  async function handleReassign(workspaceId: string, newOwnerId: string) {
+    setReassigning(workspaceId);
+    try {
+      const updated = await api<Workspace>('/api/workspaces', {
+        method: 'PUT',
+        body: { id: workspaceId, ownerId: newOwnerId },
+      });
+      setWorkspaces((prev) =>
+        prev.map((ws) => (ws.id === workspaceId ? { ...ws, ...updated } : ws)),
+      );
+    } catch { /* ignore */ }
+    setReassigning(null);
+  }
 
   return (
     <RequireRole minRole="MANAGER">
@@ -112,7 +142,28 @@ export default function WorkspacesPage() {
                   </span>
                 </div>
                 <div className="space-y-1 text-sm text-gray-400">
-                  <p>Owner: <span className="text-gray-300">{ws.ownerName}</span></p>
+                  <p>Owner: <span className="text-gray-300">{ws.owner?.displayName ?? ws.ownerName}</span></p>
+                  {canCreate && (
+                    <div className="mt-1">
+                      <select
+                        value={ws.ownerId}
+                        disabled={reassigning === ws.id}
+                        onChange={(e) => handleReassign(ws.id, e.target.value)}
+                        className="w-full rounded border border-gray-700 px-2 py-1 text-xs text-gray-300 outline-none focus:border-brand [background-color:#0f0f1a]"
+                      >
+                        <option value={ws.ownerId}>
+                          {ws.owner?.displayName ?? ws.ownerName} (current)
+                        </option>
+                        {staffList
+                          .filter((s) => s.id !== ws.ownerId)
+                          .map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.displayName} ({s.email})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
                   {ws.config?.proxy?.host && (
                     <p>Proxy: <span className="text-gray-300">{ws.config.proxy.type}://{ws.config.proxy.host}:{ws.config.proxy.port}</span></p>
                   )}

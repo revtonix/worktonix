@@ -75,7 +75,11 @@ export default function DashboardPage() {
     return <ManagerDashboard userId={user.sub} />;
   }
 
-  // Admin / Tech view — unchanged
+  if (user.role === 'OPERATOR' || user.role === 'STAFF') {
+    return <OperatorDashboard userId={user.sub} />;
+  }
+
+  // Admin / Tech view
   const cards = ALL_CARDS.filter((c) => hasMinimumRole(user.role, c.minRole));
   const labels = ROLE_LABELS[user.role] ?? { title: 'Dashboard', subtitle: '' };
 
@@ -342,6 +346,101 @@ function DistributePanel({ workspace, onUpdated }: { workspace: Workspace; onUpd
             </button>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════ */
+/*  Operator / Staff Dashboard                                       */
+/* ══════════════════════════════════════════════════════════════════ */
+
+function OperatorDashboard({ userId }: { userId: string }) {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    api<Workspace[] | { data: Workspace[] }>('/api/workspaces')
+      .then((res) => {
+        if (cancelled) return;
+        const list = Array.isArray(res) ? res : Array.isArray(res.data) ? res.data : [];
+        setWorkspaces(list.filter((w) => w.ownerId === userId));
+      })
+      .catch((err) => {
+        if (!cancelled) setFetchError(err instanceof Error ? err.message : 'Failed to load workspaces');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  return (
+    <div>
+      <h1 className="mb-1 text-2xl font-bold text-white">My Workspaces</h1>
+      <p className="mb-8 text-gray-400">Your assigned workspaces and browser profiles.</p>
+
+      {fetchError && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {fetchError}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+        </div>
+      ) : workspaces.length === 0 && !fetchError ? (
+        <div className="rounded-xl border border-gray-800 bg-surface-card p-8 text-center text-gray-400">
+          No workspaces assigned to you yet. Please contact your manager.
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {workspaces.map((ws) => {
+            const proxy = (ws.config as Record<string, any>)?.proxy;
+            const location = (ws.config as Record<string, any>)?.location;
+            return (
+              <div
+                key={ws.id}
+                className="rounded-xl border border-gray-800 bg-surface-card p-5 transition hover:border-gray-700"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="font-semibold text-white">{ws.name}</h3>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[ws.status] ?? 'bg-gray-500/15 text-gray-400'}`}>
+                    {ws.status}
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-sm text-gray-400">
+                  {proxy?.host && (
+                    <p>Proxy: <span className="text-gray-300">{proxy.type}://{proxy.host}:{proxy.port}</span></p>
+                  )}
+                  {location && (
+                    <p>Location: <span className="text-gray-300">{location}</span></p>
+                  )}
+                  {typeof ws.taskCount === 'number' && ws.taskCount > 0 && (
+                    <p>Tasks: <span className="text-gray-300">{ws.taskCount.toLocaleString()}</span></p>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <button
+                    className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-dark"
+                    onClick={() => {
+                      alert('Launch functionality requires AdsPower integration. Profile ID: ' + (ws.profileId || 'not set'));
+                    }}
+                  >
+                    Launch Workspace
+                  </button>
+                </div>
+
+                <p className="mt-3 text-xs text-gray-600">
+                  Created {new Date(ws.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

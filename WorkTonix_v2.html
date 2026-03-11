@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkTonix v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#000; --surface:#0a0a0a; --card:#111; --border:#1f1f1f; --border2:#2a2a2a;
+  --text:#ededed; --sub:#a1a1aa; --muted:#52525b;
+  --accent:#6366f1; --accent-h:#818cf8;
+  --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --cyan:#06b6d4;
+  --radius:10px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:14px;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
+
+/* LAYOUT */
+.shell{display:flex;height:100vh;}
+
+/* SIDEBAR */
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+.sidebar-top{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
+.wordmark{display:flex;align-items:center;gap:8px;margin-bottom:0;}
+.wm-icon{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 0 1px rgba(99,102,241,.3),0 4px 12px rgba(99,102,241,.2);}
+.wm-text{font-size:15px;font-weight:600;letter-spacing:-.3px;}
+.wm-text b{color:var(--accent-h);font-weight:700;}
+.nav-section{padding:12px 10px 0;flex:1;overflow-y:auto;}
+.nav-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:0 6px;margin-bottom:4px;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:13px;font-weight:500;color:var(--sub);cursor:pointer;transition:all .12s;margin-bottom:1px;user-select:none;}
+.nav-item:hover{background:var(--card);color:var(--text);}
+.nav-item.active{background:rgba(99,102,241,.1);color:var(--text);border:1px solid rgba(99,102,241,.15);}
+.nav-item .ni-icon{width:16px;font-size:13px;opacity:.7;}
+.nav-item.active .ni-icon{opacity:1;}
+.nav-pill{margin-left:auto;background:var(--border2);color:var(--sub);border-radius:99px;font-size:10px;font-weight:600;padding:2px 7px;}
+.nav-item.active .nav-pill{background:rgba(99,102,241,.2);color:var(--accent-h);}
+.sidebar-bottom{margin-top:auto;padding:12px;border-top:1px solid var(--border);}
+.user-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s;}
+.user-row:hover{background:var(--card);}
+.avatar{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#6366f1,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);flex-shrink:0;}
+.content{flex:1;overflow-y:auto;padding:24px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;border:1px solid var(--border2);background:var(--card);color:var(--text);font-family:'Inter',sans-serif;letter-spacing:-.01em;}
+.btn:hover{background:var(--border);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 1px 2px rgba(99,102,241,.3);}
+.btn.primary:hover{background:var(--accent-h);border-color:var(--accent-h);}
+.btn.danger{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.2);color:var(--red);}
+.btn.danger:hover{background:rgba(239,68,68,.15);}
+.btn.success{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.2);color:var(--green);}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+.card-title{font-size:13px;font-weight:600;letter-spacing:-.01em;}
+.card-sub{font-size:11px;color:var(--sub);margin-top:2px;}
+.card-body{padding:16px;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;}
+.badge.green{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2);}
+.badge.amber{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2);}
+.badge.blue{background:rgba(99,102,241,.1);color:#818cf8;border:1px solid rgba(99,102,241,.2);}
+.badge.red{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);}
+.badge.gray{background:rgba(82,82,91,.15);color:var(--sub);border:1px solid var(--border2);}
+.badge.cyan{background:rgba(6,182,212,.1);color:#22d3ee;border:1px solid rgba(6,182,212,.2);}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{text-align:left;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:10px 16px;border-bottom:1px solid var(--border);}
+.tbl td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(255,255,255,.015);}
+
+/* PAGE HEADER */
+.page-header{margin-bottom:24px;}
+.page-title{font-size:20px;font-weight:600;letter-spacing:-.03em;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--sub);}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.kpi-label{font-size:11px;font-weight:500;color:var(--sub);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;}
+.kpi-val{font-size:26px;font-weight:700;letter-spacing:-.04em;line-height:1;margin-bottom:6px;}
+.kpi-change{font-size:11px;font-weight:500;}
+.kpi-change.up{color:var(--green);}
+.kpi-change.warn{color:var(--amber);}
+
+/* PROGRESS BAR */
+.prog-wrap{height:4px;background:var(--border);border-radius:99px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:99px;transition:width .4s ease;}
+
+/* STATUS DOT */
+.status-dot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);font-weight:500;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+.dot.live{background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.15);animation:blink 2s infinite;}
+.dot.dead{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* GROUP CARDS */
+.groups-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;}
+.group-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
+.group-card:hover:not(.locked):not(.complete){border-color:var(--border2);transform:translateY(-1px);}
+.group-card.active{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.05);box-shadow:0 0 0 1px rgba(99,102,241,.1);}
+.group-card.complete{border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.03);cursor:default;}
+.group-card.locked{opacity:.4;cursor:not-allowed;filter:blur(.3px);}
+.group-card.reassigned{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.04);}
+.gc-num{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+.group-card.active .gc-num{color:var(--accent-h);}
+.group-card.complete .gc-num{color:var(--green);}
+.group-card.reassigned .gc-num{color:var(--amber);}
+.gc-name{font-size:14px;font-weight:600;margin-bottom:10px;}
+.gc-prog{font-size:11px;color:var(--sub);margin-bottom:8px;}
+.gc-lock{position:absolute;top:12px;right:12px;font-size:16px;opacity:.4;}
+
+/* SLOT TILES */
+.slots-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.slot-tile{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 12px;cursor:pointer;transition:all .15s;position:relative;}
+.slot-tile:hover:not(.is-done):not(.is-locked){border-color:var(--border2);transform:translateY(-1px);}
+.slot-tile.is-active{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.06);}
+.slot-tile.is-done{border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.04);cursor:not-allowed;}
+.slot-tile.is-resume{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.04);}
+.slot-tile.is-locked{opacity:.35;cursor:not-allowed;}
+.st-num{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+.slot-tile.is-done .st-num{color:var(--green);}
+.slot-tile.is-active .st-num{color:var(--accent-h);}
+.slot-tile.is-resume .st-num{color:var(--amber);}
+.st-name{font-size:12px;font-weight:600;margin-bottom:8px;}
+.st-status{font-size:10px;color:var(--sub);}
+
+/* IMPORT BTN */
+.import-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.import-btn:hover:not(:disabled){background:var(--accent-h);transform:translateY(-1px);}
+.import-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.import-btn.stop{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+
+/* LOG */
+.log-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;height:130px;overflow-y:auto;font-family:'SF Mono','JetBrains Mono',monospace;font-size:11px;line-height:1.8;}
+.log-ok{color:var(--green);}
+.log-err{color:var(--red);}
+.log-info{color:var(--cyan);}
+.log-warn{color:var(--amber);}
+.log-time{color:var(--muted);margin-right:8px;}
+
+/* AUTO-NEXT BANNER */
+.next-banner{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;animation:rise .3s ease;}
+
+/* FORM */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--sub);margin-bottom:6px;}
+.input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:9px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color .15s;}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.input::placeholder{color:var(--muted);}
+
+/* SETTINGS */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.settings-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.settings-card.full{grid-column:1/-1;}
+.sc-header{padding:14px 16px;border-bottom:1px solid var(--border);}
+.sc-title{font-size:13px;font-weight:600;}
+.sc-sub{font-size:11px;color:var(--sub);margin-top:2px;}
+.sc-body{padding:16px;}
+
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;}
+.login-card{width:360px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:32px;box-shadow:0 25px 50px rgba(0,0,0,.6);}
+.login-icon{width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:inline-flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px;box-shadow:0 0 0 1px rgba(99,102,241,.4),0 8px 24px rgba(99,102,241,.3);}
+.role-tabs{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;gap:3px;margin-bottom:20px;}
+.role-tab{flex:1;padding:7px;border-radius:6px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;color:var(--sub);}
+.role-tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3);border:1px solid var(--border2);}
+.login-btn{width:100%;padding:10px;margin-top:6px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
+.login-btn:hover{background:var(--accent-h);transform:translateY(-1px);}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:200;}
+.modal-bg.open{display:flex;animation:rise .15s ease;}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:24px;width:440px;box-shadow:0 25px 50px rgba(0,0,0,.7);}
+.modal-title{font-size:15px;font-weight:600;letter-spacing:-.02em;margin-bottom:18px;}
+.modal-footer{display:flex;gap:8px;margin-top:20px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;z-index:999;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,.5);transform:translateY(12px);opacity:0;transition:all .25s cubic-bezier(.34,1.56,.64,1);max-width:320px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.t-green{border-left:3px solid var(--green);}
+.toast.t-red{border-left:3px solid var(--red);}
+.toast.t-blue{border-left:3px solid var(--accent);}
+.toast.t-amber{border-left:3px solid var(--amber);}
+
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div class="login-icon">⚡</div>
+      <div style="font-size:18px;font-weight:700;letter-spacing:-.03em;">WorkTonix</div>
+      <div style="font-size:12px;color:var(--sub);margin-top:4px;">Profile Import Platform v2</div>
+    </div>
+    <div class="role-tabs">
+      <div class="role-tab active" onclick="setRole('admin',this)">Admin</div>
+      <div class="role-tab" onclick="setRole('tech',this)">Tech</div>
+    </div>
+    <div class="field"><label>Username</label><input class="input" id="lUser" placeholder="Enter username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="field"><label>Password</label><input class="input" type="password" id="lPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div id="loginErr" style="font-size:12px;color:var(--red);margin-bottom:10px;min-height:18px;"></div>
+    <button class="login-btn" onclick="doLogin()">Sign in →</button>
+  </div>
+</div>
+
+<!-- GROUP LINK MODAL -->
+<div class="modal-bg" id="modalGroup">
+  <div class="modal">
+    <div class="modal-title" id="modalGroupTitle">Set Google Sheet — Group 1</div>
+    <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--sub);">
+      💡 Sheet mein <b style="color:var(--text);">Slot_01</b> se <b style="color:var(--text);">Slot_10</b> tak 10 tabs hone chahiye.
+    </div>
+    <div class="field"><label>Google Sheets URL</label><input class="input" id="groupLinkInput" placeholder="https://docs.google.com/spreadsheets/d/..."></div>
+    <div class="field"><label>Group Name (optional)</label><input class="input" id="groupNameInput" placeholder="e.g. Hari Har"></div>
+    <div class="modal-footer">
+      <button class="btn primary" onclick="saveGroupLink()" style="flex:1;">Save & Activate</button>
+      <button class="btn" onclick="closeModal('modalGroup')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-bg" id="modalConfirm">
+  <div class="modal">
+    <div class="modal-title" id="confirmTitle">Confirm</div>
+    <p id="confirmMsg" style="font-size:13px;color:var(--sub);margin-bottom:20px;"></p>
+    <div class="modal-footer">
+      <button class="btn primary" id="confirmOk" style="flex:1;">Confirm</button>
+      <button class="btn" onclick="closeModal('modalConfirm')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="shell" id="app" style="display:none;">
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="wordmark">
+        <div class="wm-icon">⚡</div>
+        <div class="wm-text">Work<b>Tonix</b></div>
+      </div>
+    </div>
+    <nav class="nav-section" id="navItems"></nav>
+    <div class="sidebar-bottom">
+      <div class="user-row" onclick="logout()">
+        <div class="avatar" id="sAvatar">A</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;" id="sName2">Admin</div>
+          <div style="font-size:10px;color:var(--muted);">Sign out</div>
+        </div>
+        <span style="color:var(--muted);font-size:12px;">↩</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-size:13px;font-weight:500;color:var(--sub);">WorkTonix <span style="color:var(--muted);">/</span> <span style="color:var(--text);" id="pageLabel">Overview</span></div>
+      </div>
+
+      <!-- CENTER PROGRESS -->
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:var(--sub);font-weight:500;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px;">Progress</div>
+          <div style="font-size:11px;font-weight:600;" id="topProgressText">—</div>
+        </div>
+        <div style="width:130px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:10px;color:var(--muted);" id="topProfilesText">0 profiles</span>
+            <span style="font-size:10px;color:var(--muted);" id="topPct">0%</span>
+          </div>
+          <div class="prog-wrap"><div class="prog-fill" id="topProgBar" style="width:0%;background:var(--accent);"></div></div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="status-dot">
+          <div class="dot" id="connDot"></div>
+          <span id="connText" style="font-size:12px;">Checking</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="content" id="mainContent"></div>
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// HIDDEN CONFIG
+// ══════════════════════════════════════
+const _cfg = {
+  key: '363de44fe30646c9a9ecbf380d200f850023c6bb1abd8528',
+};
+const API = 'http://local.adspower.net:50325';
+
+const SLOT_TABS = ['Slot_01','Slot_02','Slot_03','Slot_04','Slot_05',
+                   'Slot_06','Slot_07','Slot_08','Slot_09','Slot_10'];
+
+const SLOT_NAMES = ['Karauli Shankar','Baba Vishwanath','Hari Har','Narayan',
+                    'Raj Rajeshwari','TripurSundari','ShivShakti','Mahakali',
+                    'MataKamakhya','BabaRadhaRaman'];
+
+const GROUPS_MAP = {
+  'Karauli Shankar':'8905445','Baba Vishwanath':'8905440','Hari Har':'8905434',
+  'Narayan':'8905433','Raj Rajeshwari':'8905429','TripurSundari':'8905426',
+  'ShivShakti':'8905424','Mahakali':'8905423','MataKamakhya':'3460960',
+  'BabaRadhaRaman':'3460959'
+};
+
+// ══════════════════════════════════════
+// PERSISTENT STATE (localStorage)
+// Key format: wt2_{key}
+// ══════════════════════════════════════
+function ls(key, def=null) {
+  try { const v=localStorage.getItem('wt2_'+key); return v!==null?JSON.parse(v):def; } catch{ return def; }
+}
+function lsSet(key, val) { localStorage.setItem('wt2_'+key, JSON.stringify(val)); }
+
+// groups: [{name, link, driveId, status:'active'|'complete'|'locked'|'reassigned', slots:{1:{ok,err,done,resumeRow}}}]
+function getGroups() {
+  return ls('groups', Array.from({length:10},(_,i)=>({
+    name:`Group ${i+1}`,
+    link:'',
+    driveId:'',
+    status: i===0 ? 'active' : 'locked',
+    slots: {}
+  })));
+}
+function saveGroups(g) { lsSet('groups',g); }
+
+// ══════════════════════════════════════
+// APP STATE
+// ══════════════════════════════════════
+let role = 'admin';
+let currentPage = '';
+let groups = [];
+let selectedGroup = null;
+let selectedSlot = null;
+let running = false;
+let wb_cache = {};    // {driveId: workbook}
+let editGroupIdx = null;
+let importAbort = false;
+
+// ══════════════════════════════════════
+// CREDENTIALS (hardcoded, hidden in code)
+// ══════════════════════════════════════
+const _auth = {
+  admin: { user: 'wt_admin', pass: 'RevT@2026#Admin' },
+  tech:  { user: 'wt_tech',  pass: 'Tech@9977' },
+};
+
+// ══════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════
+function setRole(r,el){
+  role=r;
+  document.querySelectorAll('.role-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('lUser').value='';
+  document.getElementById('lPass').value='';
+  document.getElementById('loginErr').textContent='';
+}
+
+function doLogin(){
+  const user = document.getElementById('lUser').value.trim();
+  const pass = document.getElementById('lPass').value.trim();
+  const err  = document.getElementById('loginErr');
+
+  // Check credentials
+  if(role==='admin'){
+    if(user!==_auth.admin.user || pass!==_auth.admin.pass){
+      err.textContent='❌ Invalid admin credentials';
+      document.getElementById('lPass').value='';
+      return;
+    }
+  } else {
+    if(user!==_auth.tech.user || pass!==_auth.tech.pass){
+      err.textContent='❌ Invalid tech credentials';
+      document.getElementById('lPass').value='';
+      return;
+    }
+  }
+
+  err.textContent='';
+  groups = getGroups();
+  document.getElementById('loginScreen').style.opacity='0';
+  document.getElementById('loginScreen').style.transition='opacity .2s';
+  setTimeout(()=>{
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    initApp();
+  },200);
+}
+
+function logout(){
+  groups=[]; selectedGroup=null; selectedSlot=null; running=false;
+  document.getElementById('lUser').value='';
+  document.getElementById('lPass').value='';
+  document.getElementById('loginErr').textContent='';
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginScreen').style.opacity='1';
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+function initApp(){
+  const isAdmin = role==='admin';
+  document.getElementById('sAvatar').textContent = isAdmin?'A':'T';
+  document.getElementById('sName2').textContent  = isAdmin?'Admin':'Tech';
+
+  const adminNav=[
+    {icon:'⊞',label:'Overview',  page:'overview'},
+    {icon:'◎',label:'Groups',    page:'groups'},
+    {icon:'≡',label:'History',   page:'history'},
+    {icon:'◈',label:'Settings',  page:'settings'},
+  ];
+  const techNav=[
+    {icon:'↑',label:'Import',    page:'techImport'},
+    {icon:'≡',label:'My History',page:'techHistory'},
+  ];
+
+  const nav=document.getElementById('navItems');
+  nav.innerHTML='';
+  (isAdmin?adminNav:techNav).forEach(item=>{
+    const el=document.createElement('div');
+    el.className='nav-item';
+    el.innerHTML=`<span class="ni-icon">${item.icon}</span><span>${item.label}</span>`;
+    el.onclick=()=>go(item.page,item.label,el);
+    nav.appendChild(el);
+  });
+
+  go(isAdmin?'overview':'techImport', isAdmin?'Overview':'Import', nav.firstChild);
+  updateTopProgress();
+  checkConn();
+}
+
+function go(page,label,el){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('pageLabel').textContent=label;
+  currentPage=page;
+  render(page);
+}
+
+function render(page){
+  const c=document.getElementById('mainContent');
+  c.innerHTML='';
+  if(page==='overview')     renderOverview(c);
+  else if(page==='groups')       renderGroupsAdmin(c);
+  else if(page==='history')      renderHistory(c);
+  else if(page==='settings')     renderSettings(c);
+  else if(page==='techImport')   renderTechImport(c);
+  else if(page==='techHistory')  renderTechHistory(c);
+}
+
+// ══════════════════════════════════════
+// TOP PROGRESS
+// ══════════════════════════════════════
+function updateTopProgress(){
+  const g=getGroups();
+  let totalSlots=0, doneSlots=0, totalProfiles=0;
+  g.forEach(grp=>{
+    if(grp.status==='active'||grp.status==='complete'||grp.status==='reassigned'){
+      totalSlots+=10;
+      Object.values(grp.slots||{}).forEach(s=>{ if(s.done){doneSlots++;totalProfiles+=(s.ok||0);} });
+    }
+  });
+  const pct=totalSlots>0?Math.round(doneSlots/totalSlots*100):0;
+  const bar=document.getElementById('topProgBar');
+  if(!bar) return;
+  bar.style.width=pct+'%';
+  bar.style.background=pct===100?'var(--green)':'var(--accent)';
+  document.getElementById('topProgressText').textContent=`${doneSlots}/${totalSlots} slots`;
+  document.getElementById('topProfilesText').textContent=totalProfiles.toLocaleString()+' profiles';
+  document.getElementById('topPct').textContent=pct+'%';
+}
+
+// ══════════════════════════════════════
+// OVERVIEW (ADMIN)
+// ══════════════════════════════════════
+function renderOverview(c){
+  const g=getGroups();
+  const activeGroups=g.filter(x=>x.status!=='locked').length;
+  const completeGroups=g.filter(x=>x.status==='complete').length;
+  let totalDoneSlots=0, totalProfiles=0;
+  g.forEach(grp=>Object.values(grp.slots||{}).forEach(s=>{if(s.done){totalDoneSlots++;totalProfiles+=(s.ok||0);}}));
+
+  c.innerHTML=`
+    <div class="page-header"><div class="page-title">Overview</div><div class="page-sub">Live system status</div></div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Active Groups</div><div class="kpi-val">${activeGroups}</div><div class="kpi-change up">of 10 total</div></div>
+      <div class="kpi"><div class="kpi-label">Complete Groups</div><div class="kpi-val">${completeGroups}</div><div class="kpi-change ${completeGroups>0?'up':'warn'}">${completeGroups>0?'✓ Recycled':'Pending'}</div></div>
+      <div class="kpi"><div class="kpi-label">Slots Done</div><div class="kpi-val">${totalDoneSlots}</div><div class="kpi-change up">of ${activeGroups*10} total</div></div>
+      <div class="kpi"><div class="kpi-label">Profiles Imported</div><div class="kpi-val">${totalProfiles.toLocaleString()}</div><div class="kpi-change up">↑ All time</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Group Status</div></div>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Group</th><th>Status</th><th>Progress</th><th>Slots Done</th><th>Profiles</th></tr></thead>
+        <tbody>
+          ${g.map((grp,i)=>{
+            const slots=Object.values(grp.slots||{});
+            const done=slots.filter(s=>s.done).length;
+            const profiles=slots.reduce((s,x)=>s+(x.ok||0),0);
+            const pct=Math.round(done/10*100);
+            return `<tr>
+              <td style="font-weight:600;color:var(--muted);">${i+1}</td>
+              <td style="font-weight:500;">${grp.name}</td>
+              <td>${statusBadge(grp.status)}</td>
+              <td style="width:140px;">
+                <div class="prog-wrap" style="margin-bottom:4px;"><div class="prog-fill" style="width:${pct}%;background:${pct===100?'var(--green)':'var(--accent)'};"></div></div>
+                <span style="font-size:10px;color:var(--muted);">${pct}%</span>
+              </td>
+              <td style="color:var(--sub);">${done}/10</td>
+              <td style="color:var(--sub);">${profiles.toLocaleString()}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function statusBadge(s){
+  if(s==='active')     return `<span class="badge blue">● Active</span>`;
+  if(s==='complete')   return `<span class="badge green">✓ Complete</span>`;
+  if(s==='locked')     return `<span class="badge gray">🔒 Locked</span>`;
+  if(s==='reassigned') return `<span class="badge amber">↺ Re-assigned</span>`;
+  return `<span class="badge gray">${s}</span>`;
+}
+
+// ══════════════════════════════════════
+// GROUPS PAGE (ADMIN)
+// ══════════════════════════════════════
+function renderGroupsAdmin(c){
+  const g=getGroups();
+  c.innerHTML=`
+    <div class="page-header">
+      <div class="page-title">Groups</div>
+      <div class="page-sub">Manage Google Sheet links. Groups unlock sequentially.</div>
+    </div>
+    <div class="groups-grid" id="adminGroupsGrid"></div>
+  `;
+  renderAdminGroupCards();
+}
+
+function renderAdminGroupCards(){
+  const g=getGroups();
+  const grid=document.getElementById('adminGroupsGrid');
+  if(!grid) return;
+  grid.innerHTML='';
+
+  g.forEach((grp,i)=>{
+    const slots=Object.values(grp.slots||{});
+    const doneCount=slots.filter(s=>s.done).length;
+    const pct=Math.round(doneCount/10*100);
+    const hasLink=!!grp.link;
+
+    const card=document.createElement('div');
+    card.className=`group-card ${grp.status}`;
+
+    let actions='';
+    if(grp.status==='locked'){
+      actions=`<span style="font-size:11px;color:var(--muted);">🔒 Unlocks after Group ${i} completes</span>`;
+    } else if(grp.status==='complete'){
+      actions=`<button class="btn success" style="font-size:11px;" onclick="openReassign(${i})">↺ Re-assign new sheet</button>`;
+    } else {
+      // active or reassigned
+      actions=`<button class="btn primary" style="font-size:11px;" onclick="openGroupModal(${i})">
+        ${hasLink?'✎ Update link':'+ Set Sheet link'}
+      </button>`;
+    }
+
+    card.innerHTML=`
+      <div class="gc-num">Group ${i+1} ${grp.status==='locked'?'<span class="gc-lock">🔒</span>':''}</div>
+      <div class="gc-name">${grp.name}</div>
+      ${grp.status!=='locked'?`
+        <div class="prog-wrap" style="margin-bottom:8px;"><div class="prog-fill" style="width:${pct}%;background:${pct===100?'var(--green)':'var(--accent)'};"></div></div>
+        <div class="gc-prog">${doneCount}/10 slots · ${hasLink?'Sheet linked ✓':'No sheet set ⚠️'}</div>
+      `:`<div class="gc-prog" style="color:var(--muted);">Waiting to unlock</div>`}
+      <div style="margin-top:12px;">${actions}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function openGroupModal(idx){
+  editGroupIdx=idx;
+  const g=getGroups();
+  document.getElementById('modalGroupTitle').textContent=`Set Google Sheet — Group ${idx+1}: ${g[idx].name}`;
+  document.getElementById('groupLinkInput').value=g[idx].link||'';
+  document.getElementById('groupNameInput').value=g[idx].name||`Group ${idx+1}`;
+  openModal('modalGroup');
+}
+
+function openReassign(idx){
+  editGroupIdx=idx;
+  const g=getGroups();
+  document.getElementById('modalGroupTitle').textContent=`↺ Re-assign Sheet — Group ${idx+1}: ${g[idx].name}`;
+  document.getElementById('groupLinkInput').value='';
+  document.getElementById('groupNameInput').value=g[idx].name||`Group ${idx+1}`;
+  openModal('modalGroup');
+}
+
+function saveGroupLink(){
+  const link=document.getElementById('groupLinkInput').value.trim();
+  const name=document.getElementById('groupNameInput').value.trim();
+  if(!link){toast('Google Sheet URL daalo','red');return;}
+  const m=link.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if(!m){toast('Valid Google Sheets URL daalo','red');return;}
+
+  const g=getGroups();
+  const grp=g[editGroupIdx];
+  const wasComplete=grp.status==='complete';
+
+  grp.link=link;
+  grp.driveId=m[1];
+  if(name) grp.name=name;
+
+  if(wasComplete){
+    // Re-assign: reset slots, mark reassigned
+    grp.status='reassigned';
+    grp.slots={};
+    // Clear workbook cache for this group
+    delete wb_cache[grp.driveId];
+    toast(`Group ${editGroupIdx+1} re-assigned! Tech ko ek Group aage complete karne ke baad dikhega.`,'amber');
+  } else {
+    grp.status='active';
+    toast(`Group ${editGroupIdx+1} activated — Tech import kar sakta hai!`,'green');
+  }
+
+  saveGroups(g);
+  closeModal('modalGroup');
+  updateTopProgress();
+  renderAdminGroupCards();
+}
+
+// ══════════════════════════════════════
+// TECH IMPORT
+// ══════════════════════════════════════
+function renderTechImport(c){
+  selectedGroup=null; selectedSlot=null;
+  const g=getGroups();
+
+  // Find current active group for tech (first non-locked, non-complete)
+  // Rule: sequential — only show up to current active group
+  // reassigned groups visible only after all original groups ahead are done
+
+  c.innerHTML=`
+    <div class="page-header">
+      <div class="page-title">Import</div>
+      <div class="page-sub">Select a group → then select a slot → import</div>
+    </div>
+
+    <!-- STEP 1: GROUP SELECT -->
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-header">
+        <div><div class="card-title">Step 1 — Select Group</div><div class="card-sub">Groups unlock sequentially</div></div>
+      </div>
+      <div class="card-body">
+        <div class="groups-grid" id="techGroupsGrid"></div>
+      </div>
+    </div>
+
+    <!-- STEP 2: SLOT SELECT -->
+    <div class="card" style="margin-bottom:12px;" id="slotPanel">
+      <div class="card-body" style="text-align:center;color:var(--muted);padding:20px;">← Select a group above</div>
+    </div>
+
+    <!-- STEP 3: IMPORT -->
+    <div class="card" id="importPanel" style="display:none;">
+      <div class="card-body" style="text-align:center;color:var(--muted);padding:20px;">← Select a slot to begin</div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="card" id="progressPanel" style="display:none;">
+      <div class="card-header">
+        <div class="card-title" id="progTitle">Importing...</div>
+        <span id="progCount" style="font-size:12px;font-weight:600;color:var(--accent);">0 / 500</span>
+      </div>
+      <div class="card-body">
+        <div class="prog-wrap" style="margin-bottom:14px;height:5px;"><div class="prog-fill" id="progBar" style="width:0%;background:var(--accent);"></div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:var(--green);" id="pOk">0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">Imported</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:var(--red);" id="pErr">0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">Failed</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:22px;font-weight:700;color:var(--cyan);" id="pLeft">—</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;">Remaining</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--sub);">Auto Speed</span>
+          <span class="badge cyan" id="speedBadge">—</span>
+        </div>
+        <div class="log-box" id="logBox"></div>
+      </div>
+    </div>
+  `;
+
+  renderTechGroups();
+}
+
+function renderTechGroups(){
+  const g=getGroups();
+  const grid=document.getElementById('techGroupsGrid');
+  if(!grid) return;
+  grid.innerHTML='';
+
+  // Determine which groups tech can see:
+  // - original active groups (status=active, has link)
+  // - reassigned groups become visible ONLY after all 10 original slots of previous group done
+  // Simple rule: first 'active' group with link = current. Others are locked or complete.
+
+  g.forEach((grp,i)=>{
+    const slots=Object.values(grp.slots||{});
+    const doneCount=slots.filter(s=>s.done).length;
+    const pct=Math.round(doneCount/10*100);
+    const isSelected=selectedGroup===i;
+
+    const card=document.createElement('div');
+
+    let displayStatus=grp.status;
+    // Tech sees reassigned same as active (if previous is complete)
+    if(grp.status==='reassigned'){
+      // Check if previous group is complete
+      const prev=i>0?g[i-1]:null;
+      if(prev && prev.status!=='complete') displayStatus='locked';
+      else displayStatus='active';
+    }
+
+    card.className=`group-card ${displayStatus==='active'?isSelected?'active':'':displayStatus==='complete'?'complete':'locked'}`;
+
+    if(displayStatus==='locked'){
+      card.innerHTML=`
+        <div class="gc-num">Group ${i+1} <span class="gc-lock">🔒</span></div>
+        <div class="gc-name">${grp.name}</div>
+        <div class="gc-prog" style="color:var(--muted);">Locked</div>
+      `;
+    } else if(displayStatus==='complete'){
+      card.innerHTML=`
+        <div class="gc-num" style="color:var(--green);">Group ${i+1} ✓</div>
+        <div class="gc-name">${grp.name}</div>
+        <div class="prog-wrap" style="margin-bottom:6px;"><div class="prog-fill" style="width:100%;background:var(--green);"></div></div>
+        <div class="gc-prog">10/10 slots complete</div>
+      `;
+    } else {
+      // active / reassigned-visible
+      if(!grp.link){
+        card.innerHTML=`
+          <div class="gc-num">Group ${i+1}</div>
+          <div class="gc-name">${grp.name}</div>
+          <div class="gc-prog" style="color:var(--amber);">⚠️ No sheet linked yet</div>
+        `;
+      } else {
+        card.innerHTML=`
+          <div class="gc-num">${isSelected?'▶ ':''}Group ${i+1}</div>
+          <div class="gc-name">${grp.name}</div>
+          <div class="prog-wrap" style="margin-bottom:6px;"><div class="prog-fill" style="width:${pct}%;background:${pct===100?'var(--green)':'var(--accent)'};"></div></div>
+          <div class="gc-prog">${doneCount}/10 slots done</div>
+        `;
+        card.onclick=()=>selectGroup(i);
+      }
+    }
+    grid.appendChild(card);
+  });
+}
+
+function selectGroup(idx){
+  selectedGroup=idx;
+  selectedSlot=null;
+  renderTechGroups();
+  renderSlotPanel();
+  document.getElementById('importPanel').style.display='none';
+  document.getElementById('progressPanel').style.display='none';
+}
+
+function renderSlotPanel(){
+  const g=getGroups();
+  const grp=g[selectedGroup];
+  const panel=document.getElementById('slotPanel');
+
+  panel.innerHTML=`
+    <div class="card-header">
+      <div><div class="card-title">Step 2 — Select Slot</div><div class="card-sub">Group ${selectedGroup+1}: ${grp.name}</div></div>
+      <span style="font-size:12px;color:var(--sub);">${Object.values(grp.slots||{}).filter(s=>s.done).length}/10 done</span>
+    </div>
+    <div class="card-body">
+      <div class="slots-grid" id="slotsGrid"></div>
+    </div>
+  `;
+  renderSlotTiles();
+}
+
+function renderSlotTiles(){
+  const g=getGroups();
+  const grp=g[selectedGroup];
+  const grid=document.getElementById('slotsGrid');
+  if(!grid) return;
+  grid.innerHTML='';
+
+  SLOT_TABS.forEach((tab,i)=>{
+    const slotData=grp.slots?.[i+1]||{};
+    const isDone=!!slotData.done;
+    const resumeRow=slotData.resumeRow||0;
+    const hasResume=!isDone && resumeRow>0;
+    const remaining=500-resumeRow;
+    const isSelected=selectedSlot===i+1;
+
+    const tile=document.createElement('div');
+    tile.className=`slot-tile ${isDone?'is-done':hasResume?'is-resume':isSelected?'is-active':''}`;
+    tile.innerHTML=`
+      <div class="st-num">Slot ${i+1}${isDone?' ✓':hasResume?' ▶':''}</div>
+      <div class="st-name">${SLOT_NAMES[i]}</div>
+      <div class="st-status">${isDone?'Complete ✅':hasResume?`${remaining} left`:running&&isSelected?'Importing...':'500 profiles'}</div>
+    `;
+    if(!isDone && !running) tile.onclick=()=>selectSlot(i+1);
+    grid.appendChild(tile);
+  });
+}
+
+function selectSlot(slotNum){
+  if(running) return;
+  selectedSlot=slotNum;
+  renderSlotTiles();
+  renderImportPanel();
+}
+
+function renderImportPanel(){
+  const g=getGroups();
+  const grp=g[selectedGroup];
+  const slotData=grp.slots?.[selectedSlot]||{};
+  const resumeRow=slotData.resumeRow||0;
+  const remaining=500-resumeRow;
+  const panel=document.getElementById('importPanel');
+  panel.style.display='block';
+
+  panel.innerHTML=`
+    <div class="card-header">
+      <div>
+        <div class="card-title">Step 3 — Import Slot ${selectedSlot}</div>
+        <div class="card-sub">${resumeRow>0?`Resume from row ${resumeRow+1} · ${remaining} profiles remaining`:`500 profiles ready`}</div>
+      </div>
+      <span class="badge cyan" id="speedBadge">${getSpeedLabel(getAutoSpeed(remaining))}</span>
+    </div>
+    <div class="card-body">
+      <button class="import-btn" id="importBtn" onclick="startImport()">
+        ${resumeRow>0?`▶ Resume · ${remaining} profiles`:`↑ Start Import · 500 profiles`}
+      </button>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════
+// IMPORT ENGINE
+// ══════════════════════════════════════
+async function startImport(){
+  if(running){ importAbort=true; running=false; return; }
+  if(selectedGroup===null||selectedSlot===null) return;
+
+  running=true; importAbort=false;
+  const g=getGroups();
+  const grp=g[selectedGroup];
+  const slotIdx=selectedSlot-1;
+  const tab=SLOT_TABS[slotIdx];
+  const resumeFrom=grp.slots?.[selectedSlot]?.resumeRow||0;
+
+  const btn=document.getElementById('importBtn');
+  if(btn){btn.textContent='⏹ Stop'; btn.classList.add('stop');}
+
+  document.getElementById('progressPanel').style.display='block';
+  document.getElementById('logBox').innerHTML='';
+  document.getElementById('progTitle').textContent=`Importing · G${selectedGroup+1} · Slot ${selectedSlot} · ${SLOT_NAMES[slotIdx]}`;
+
+  // Load workbook
+  let profiles=[];
+  try {
+    if(!wb_cache[grp.driveId]){
+      log('Loading sheet from cloud...','info');
+      const exportUrl=`https://docs.google.com/spreadsheets/d/${grp.driveId}/export?format=xlsx`;
+      const res=await fetch(exportUrl);
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      wb_cache[grp.driveId]=XLSX.read(await res.arrayBuffer(),{type:'array'});
+      log(`Sheet loaded — ${wb_cache[grp.driveId].SheetNames.length} tabs found`,'info');
+    }
+    const ws=wb_cache[grp.driveId].Sheets[tab];
+    if(!ws) throw new Error(`Tab "${tab}" not found in sheet`);
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+    const hdrs=rows[0];
+    profiles=rows.slice(1).filter(r=>r&&r[0]).map(r=>{
+      const o={}; hdrs.forEach((h,ii)=>o[h]=r[ii]||'');
+      const gid=GROUPS_MAP[o.remark]||Object.values(GROUPS_MAP)[0];
+      return {name:o.name,group_id:gid,ua:o.ua,resolution:o.resolution||'390x844'};
+    });
+    log(`${profiles.length} profiles loaded from ${tab}`,'info');
+  } catch(e){
+    log('Error: '+e.message,'err');
+    running=false;
+    if(btn){btn.textContent='↑ Retry';btn.classList.remove('stop');}
+    return;
+  }
+
+  const toImport=profiles.slice(resumeFrom);
+  const total=profiles.length;
+  let okTotal=resumeFrom, newOk=0, newErr=0;
+
+  if(resumeFrom>0) log(`Resuming from row ${resumeFrom+1}`,'warn');
+  updateProg(resumeFrom,total,resumeFrom,0);
+
+  for(let i=0;i<toImport.length;i++){
+    if(importAbort){log('Stopped by user','warn');break;}
+    const p=toImport[i];
+    const remaining=toImport.length-i;
+    const speed=getAutoSpeed(remaining);
+
+    const badge=document.getElementById('speedBadge');
+    if(badge) badge.textContent=getSpeedLabel(speed);
+
+    const [w,h]=(p.resolution||'390x844').split('x');
+    try{
+      const res=await fetch(`${API}/api/v1/user/create?api_key=${_cfg.key}`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          name:p.name,group_id:String(p.group_id),
+          user_proxy_config:{proxy_soft:'other',proxy_type:'http',proxy_host:'ca.proxy-jet.io',proxy_port:'1010',proxy_user:'241102wRsS0-resi-US',proxy_password:'df4t3tgerggdfdg4ert3reAs'},
+          fingerprint_config:{ua:p.ua,screen_resolution:`${w}_${h}`,language:['en-US'],time_zone:'auto',webrtc:'disabled',canvas:'1',webgl:'1',audio:'1'}
+        })
+      });
+      const json=JSON.parse(await res.text());
+      if(json.code===0){
+        newOk++; okTotal++;
+        // Save progress immediately
+        const g2=getGroups();
+        if(!g2[selectedGroup].slots) g2[selectedGroup].slots={};
+        if(!g2[selectedGroup].slots[selectedSlot]) g2[selectedGroup].slots[selectedSlot]={};
+        g2[selectedGroup].slots[selectedSlot].resumeRow=resumeFrom+i+1;
+        g2[selectedGroup].slots[selectedSlot].ok=okTotal;
+        saveGroups(g2);
+        if(newOk%50===0||i<3) log(`✓ ${p.name} [${okTotal}/${total}]`,'ok');
+      } else { newErr++; log(`✗ ${p.name} — ${json.msg}`,'err'); }
+    } catch(e){ newErr++; log(`✗ ${p.name} — ${e.message}`,'err'); }
+    updateProg(resumeFrom+i+1,total,okTotal,newErr);
+    await sleep(speed);
+  }
+
+  running=false;
+  const pct=Math.round(okTotal/total*100);
+  log(`Done · ${okTotal}/${total} imported · ${newErr} failed · ${pct}%`,okTotal>0?'ok':'warn');
+
+  // Mark slot done if fully complete
+  const g3=getGroups();
+  if(!g3[selectedGroup].slots) g3[selectedGroup].slots={};
+  if(!g3[selectedGroup].slots[selectedSlot]) g3[selectedGroup].slots[selectedSlot]={};
+  g3[selectedGroup].slots[selectedSlot].ok=okTotal;
+  g3[selectedGroup].slots[selectedSlot].err=newErr;
+  g3[selectedGroup].slots[selectedSlot].time=new Date().toLocaleString();
+
+  if(okTotal>=total && !importAbort){
+    g3[selectedGroup].slots[selectedSlot].done=true;
+    g3[selectedGroup].slots[selectedSlot].resumeRow=total;
+
+    // Check if ALL 10 slots done → complete group
+    const allDone=Object.values(g3[selectedGroup].slots).filter(s=>s.done).length===10;
+    if(allDone){
+      g3[selectedGroup].status='complete';
+      // Unlock next group
+      if(selectedGroup+1<10 && g3[selectedGroup+1].status==='locked'){
+        g3[selectedGroup+1].status='active';
+        toast(`🎉 Group ${selectedGroup+1} complete! Group ${selectedGroup+2} unlocked!`,'green');
+      } else {
+        toast(`🎉 Group ${selectedGroup+1} all slots complete!`,'green');
+      }
+    } else {
+      toast(`Slot ${selectedSlot} complete! ${okTotal} profiles imported.`,'green');
+    }
+
+    saveGroups(g3);
+    updateTopProgress();
+
+    // Auto-next: find next incomplete slot
+    const nextSlot=findNextSlot(g3);
+    if(nextSlot && !allDone){
+      setTimeout(()=>showAutoNext(nextSlot),500);
+    }
+  } else if(okTotal>0){
+    saveGroups(g3);
+    toast(`Partial: ${total-okTotal} remaining. Click slot to resume.`,'amber');
+  }
+
+  if(btn){btn.textContent=resumeFrom>0?'▶ Resume':'↑ Start Import';btn.classList.remove('stop');}
+  renderSlotTiles();
+  renderTechGroups();
+}
+
+function findNextSlot(g){
+  const grp=g[selectedGroup];
+  for(let i=1;i<=10;i++){
+    if(!grp.slots?.[i]?.done) return i;
+  }
+  return null;
+}
+
+function showAutoNext(nextSlot){
+  const panel=document.getElementById('importPanel');
+  if(!panel) return;
+  const existing=document.getElementById('autoNextBanner');
+  if(existing) existing.remove();
+  const banner=document.createElement('div');
+  banner.id='autoNextBanner';
+  banner.className='next-banner';
+  banner.innerHTML=`
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--green);">✓ Slot complete!</div>
+      <div style="font-size:12px;color:var(--sub);margin-top:2px;">Slot ${nextSlot} ready — start karo?</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" onclick="document.getElementById('autoNextBanner').remove()" style="font-size:12px;">Skip</button>
+      <button class="btn primary" onclick="autoStartNext(${nextSlot})" style="font-size:12px;">▶ Start Slot ${nextSlot}</button>
+    </div>
+  `;
+  panel.parentNode.insertBefore(banner,panel);
+}
+
+function autoStartNext(slotNum){
+  const banner=document.getElementById('autoNextBanner');
+  if(banner) banner.remove();
+  selectSlot(slotNum);
+}
+
+function updateProg(done_,total,ok,err){
+  const pct=(done_/total*100).toFixed(1);
+  const bar=document.getElementById('progBar');
+  const cnt=document.getElementById('progCount');
+  if(bar) bar.style.width=pct+'%';
+  if(cnt) cnt.textContent=`${done_} / ${total}`;
+  const e1=document.getElementById('pOk');
+  const e2=document.getElementById('pErr');
+  const e3=document.getElementById('pLeft');
+  if(e1) e1.textContent=ok;
+  if(e2) e2.textContent=err;
+  if(e3) e3.textContent=total-done_;
+}
+
+// ══════════════════════════════════════
+// AUTO SPEED
+// ══════════════════════════════════════
+function getAutoSpeed(remaining){
+  if(remaining>400) return 30;
+  if(remaining>200) return 60;
+  if(remaining>100) return 100;
+  return 150;
+}
+function getSpeedLabel(ms){
+  if(ms<=30)  return '🚀 Fast (30ms)';
+  if(ms<=60)  return '⚡ Normal (60ms)';
+  if(ms<=100) return '🐢 Safe (100ms)';
+  return '🛡 Very safe (150ms)';
+}
+
+// ══════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════
+function renderHistory(c){
+  const g=getGroups();
+  let rows=[];
+  g.forEach((grp,gi)=>{
+    Object.entries(grp.slots||{}).forEach(([slotNum,s])=>{
+      if(s.ok||s.done) rows.push({group:gi+1,groupName:grp.name,slot:slotNum,ok:s.ok||0,err:s.err||0,done:s.done,time:s.time||'—'});
+    });
+  });
+
+  c.innerHTML=`
+    <div class="page-header"><div class="page-title">History</div><div class="page-sub">${rows.length} import records</div></div>
+    <div class="card">
+      ${rows.length?`<table class="tbl">
+        <thead><tr><th>Group</th><th>Slot</th><th>Imported</th><th>Failed</th><th>Status</th><th>Time</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr>
+          <td style="font-weight:500;">G${r.group} · ${r.groupName}</td>
+          <td>Slot ${r.slot}</td>
+          <td style="color:var(--green);font-weight:600;">${r.ok}</td>
+          <td style="color:${r.err>0?'var(--red)':'var(--muted)'};">${r.err}</td>
+          <td><span class="badge ${r.done?'green':'amber'}">${r.done?'Complete':'Partial'}</span></td>
+          <td style="color:var(--sub);font-size:12px;">${r.time}</td>
+        </tr>`).join('')}</tbody>
+      </table>`:`<div style="padding:40px;text-align:center;color:var(--muted);">No history yet</div>`}
+    </div>
+  `;
+}
+
+function renderTechHistory(c){
+  renderHistory(c);
+}
+
+// ══════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════
+function renderSettings(c){
+  c.innerHTML=`
+    <div class="page-header"><div class="page-title">Settings</div><div class="page-sub">Admin only</div></div>
+    <div class="settings-grid">
+      <div class="settings-card full">
+        <div class="sc-header"><div class="sc-title">AdsPower API</div><div class="sc-sub">Hidden from Tech</div></div>
+        <div class="sc-body">
+          <div class="field">
+            <label>API Key</label>
+            <div style="position:relative;">
+              <input class="input" type="password" id="apiKeyInput" value="${_cfg.key}" style="padding-right:42px;">
+              <button onclick="toggleApiKey()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--sub);font-size:15px;">👁</button>
+            </div>
+          </div>
+          <button class="btn primary" onclick="toast('Saved','green')">Save changes</button>
+        </div>
+      </div>
+
+      <div class="settings-card full">
+        <div class="sc-header"><div class="sc-title">Reset All Data</div><div class="sc-sub">Clears all group progress, slots, history</div></div>
+        <div class="sc-body">
+          <button class="btn danger" onclick="confirmReset()">🗑 Reset everything</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleApiKey(){
+  const inp=document.getElementById('apiKeyInput');
+  inp.type=inp.type==='password'?'text':'password';
+}
+
+function confirmReset(){
+  document.getElementById('confirmTitle').textContent='Reset all data?';
+  document.getElementById('confirmMsg').textContent='This will clear all group progress, slot locks, and history. This cannot be undone.';
+  document.getElementById('confirmOk').onclick=()=>{
+    ['groups','hist'].forEach(k=>localStorage.removeItem('wt2_'+k));
+    closeModal('modalConfirm');
+    toast('All data reset','amber');
+    groups=getGroups();
+    updateTopProgress();
+    render(currentPage);
+  };
+  openModal('modalConfirm');
+}
+
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function log(msg,type='info'){
+  const box=document.getElementById('logBox');
+  if(!box) return;
+  const t=new Date().toTimeString().slice(0,8);
+  const d=document.createElement('div');
+  d.innerHTML=`<span class="log-time">${t}</span><span class="log-${type}">${msg}</span>`;
+  box.appendChild(d);
+  box.scrollTop=box.scrollHeight;
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+function toast(msg,type='blue'){
+  const t=document.getElementById('toast');
+  t.className=`toast t-${type==='green'?'green':type==='red'?'red':type==='amber'?'amber':'blue'} show`;
+  t.innerHTML=`<span>${type==='green'?'✓':type==='red'?'✕':type==='amber'?'⚠':'i'}</span><span>${msg}</span>`;
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove('show'),4000);
+}
+
+async function checkConn(){
+  try{
+    const r=await fetch(`${API}/api/v1/group/list?api_key=${_cfg.key}&page_size=1`);
+    const d=await r.json();
+    if(d.code===0){
+      document.getElementById('connDot').className='dot live';
+      document.getElementById('connText').textContent='AdsPower Online';
+    } else throw 0;
+  } catch {
+    document.getElementById('connDot').className='dot dead';
+    document.getElementById('connText').textContent='AdsPower Offline';
+  }
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</body>
+</html>

@@ -1,92 +1,10 @@
 {
   "name": "worktonix",
-  "version": "1.0.0",
-  "description": "WorkTonix Desktop Application",
-  "main": "dist/electron/main.js",
+  "version": "2.0.0",
   "scripts": {
-    "build": "prisma generate && tsc --noEmit",
-    "start": "node src/index.js",
-    "dev": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "db:migrate": "prisma migrate deploy",
-    "db:seed": "node prisma/seed.js",
-    "db:reset": "prisma migrate reset --force",
-    "electron:build": "tsc -p tsconfig.electron.json",
-    "electron:start": "npm run electron:build && electron .",
-    "electron:dist": "npm run electron:build && electron-builder",
-    "electron:dist:win": "npm run electron:build && electron-builder --win",
-    "electron:dist:mac": "npm run electron:build && electron-builder --mac"
+    "start": "node server.js"
   },
-  "prisma": {
-    "seed": "node prisma/seed.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/revtonix/worktonix.git"
-  },
-  "keywords": [],
-  "author": "Revtonix",
-  "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.6.0",
-    "@types/express": "^5.0.6",
-    "axios": "^1.13.6",
-    "bcryptjs": "^2.4.3",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.15.1",
-    "cors": "^2.8.5",
-    "dotenv": "^17.3.1",
-    "express": "^4.21.0",
-    "jsonwebtoken": "^9.0.2",
-    "playwright": "^1.58.2",
-    "prisma": "^6.6.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
-  },
-  "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
-  },
-  "build": {
-    "appId": "com.revtonix.worktonix",
-    "productName": "WorkTonix",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/electron/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        }
-      ]
-    },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": ["x64", "arm64"]
-        }
-      ],
-      "category": "public.app-category.productivity",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false
-    },
-    "dmg": {
-      "contents": [
-        { "x": 130, "y": 220 },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
-      ]
-    },
-    "nsis": {
-      "oneClick": true,
-      "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+    "express": "^4.18.2"
   }
 }
